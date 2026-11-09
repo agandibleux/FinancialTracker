@@ -1,10 +1,11 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Cloud, CloudOff, Copy, FileUp, Lock, LockKeyhole, RefreshCw, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { getConfig, makeSetupLink, setConfig } from '../local/config';
 import { disableLock, enableLock, lockEnabled, unlockApp } from '../local/lock';
 import { downloadBlob } from '../local/download';
 import { enableSync, exportFile, importFile, resolveConflict, restoreFromDrive, startFresh, syncNow, unlink, unlock, type Status } from '../local/sync';
+import { findVault } from '../local/drive';
 import { useSyncState } from '../local/useSync';
 import { toast } from '../lib/toast';
 import { Badge, Card, btnCls, btnGhost, inputCls } from './ui';
@@ -175,6 +176,13 @@ export function Welcome() {
   const [error, setError] = useState('');
   const configured = !!getConfig().googleClientId.trim();
   const [, force] = useState(0);
+  const [found, setFound] = useState<boolean | null>(null);
+  // Signed-in users: look for an existing vault in their Drive so a new device goes straight to "enter your passphrase".
+  useEffect(() => {
+    let live = true;
+    findVault(false).then(v => { if (live) { setFound(!!v); setMode(m => m ?? (v ? 'other' : 'first')); } }).catch(() => {});
+    return () => { live = false; };
+  }, []);
   const choice = (m: 'first' | 'other', title: string, text: string) => (
     <button onClick={() => setMode(m)} className={`w-full rounded-2xl border p-4 text-left transition ${mode === m ? 'border-indigo-500 bg-indigo-50 ring-4 ring-indigo-500/10' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
       <p className="font-semibold text-slate-900">{title}</p><p className="mt-0.5 text-sm text-slate-500">{text}</p>
@@ -188,6 +196,7 @@ export function Welcome() {
 
       <PrivacyNote compact />
 
+      {found && <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800"><ShieldCheck size={16} />We found your encrypted data in your Google Drive. Enter your passphrase below to open it on this device.</p>}
       <p className="text-sm font-semibold text-slate-700">What are you doing?</p>
       <div className="space-y-3">
         {choice('first', 'This is my first device', 'Set up the app for the first time and bring in my existing data. Do this on your computer.')}
