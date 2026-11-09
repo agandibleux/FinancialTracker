@@ -279,6 +279,8 @@ export async function resolveConflict(keep: 'merge' | 'mine' | 'drive') {
   try {
     set({ status: 'syncing', message: '' });
     if (keep === 'mine') {
+      // explicit overwrite: always pull Drive's current copy first and keep it as a local safety backup
+      if (remote) await pushBackup(await open(await downloadVault(remote.id, true), key));
       await push(remote?.id ?? null, key, salt, true);
     } else {
       if (!remote) throw new Error('Drive vault not found');
