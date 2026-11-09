@@ -79,7 +79,7 @@ export function LockScreen() {
   const go = async () => { try { await unlockApp(code); setCode(''); } catch { setError('Wrong passcode'); } };
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 p-6 pt-safe">
-      <div className="flex items-center gap-3"><img src="/icon.svg" alt="" className="h-11 w-11 rounded-xl" /><h1 className="text-lg font-semibold">Financial Planner is locked</h1></div>
+      <div className="flex items-center gap-3"><img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-11 w-11 rounded-xl" /><h1 className="text-lg font-semibold">Financial Planner is locked</h1></div>
       <input className={inputCls} type="password" autoFocus placeholder="Device passcode" value={code} onChange={e => { setCode(e.target.value); setError(''); }} onKeyDown={e => e.key === 'Enter' && code && go()} />
       {error && <p className="text-sm text-red-600">{error}</p>}
       <button className={btnCls} disabled={!code} onClick={go}><Lock size={16} />Unlock</button>
@@ -191,7 +191,7 @@ export function Welcome() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-5 p-5 pt-safe">
-      <div className="flex items-center gap-3"><img src="/icon.svg" alt="" className="h-12 w-12 rounded-xl" />
+      <div className="flex items-center gap-3"><img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-12 w-12 rounded-xl" />
         <div><h1 className="text-xl font-semibold tracking-tight">Financial Planner</h1><p className="text-sm text-slate-500">Your data stays on your devices — and in your own encrypted Google Drive file.</p></div></div>
 
       <PrivacyNote compact />

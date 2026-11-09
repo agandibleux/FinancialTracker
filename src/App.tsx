@@ -62,7 +62,7 @@ export default function App() {
     <div className="mx-auto flex min-h-screen w-full max-w-[100rem] md:gap-4 md:p-4 lg:gap-6 lg:p-6">
       <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-[4.75rem] shrink-0 flex-col rounded-3xl p-3 lg:top-6 lg:h-[calc(100vh-3rem)] lg:w-60 lg:p-4 text-white shadow-[0_24px_48px_-24px_rgba(14,26,46,0.6)] md:flex" style={{ background: 'linear-gradient(170deg,#16294a 0%,#0e1a2e 70%)' }}>
         <div className="mb-7 flex items-center justify-center gap-3 pt-1 lg:justify-start lg:px-2">
-          <img src="/icon.svg" alt="" className="h-10 w-10 rounded-xl shadow-lg shadow-black/30" />
+          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-10 w-10 rounded-xl shadow-lg shadow-black/30" />
           <div className="hidden lg:block"><p className="text-[15px] font-semibold leading-tight tracking-tight">Financial Planner</p><p className="flex items-center gap-1.5 text-[11px] text-slate-400"><i className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />Household · CAD</p></div>
         </div>
         <nav className="flex flex-1 flex-col gap-3 overflow-y-auto lg:gap-5 lg:pr-1">
@@ -88,7 +88,7 @@ export default function App() {
       {/* phone header */}
       <header className="pt-safe fixed inset-x-0 top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl md:hidden">
         <div className="flex h-12 items-center gap-2.5 px-4">
-          <img src="/icon.svg" alt="" className="h-7 w-7 rounded-lg" />
+          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-7 w-7 rounded-lg" />
           <p className="text-[15px] font-semibold tracking-tight text-slate-900">Financial Planner</p>
           <SyncChip className="ml-auto text-slate-500" /><UserMenu />
         </div>

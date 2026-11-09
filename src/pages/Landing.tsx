@@ -21,7 +21,7 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-[#0e1a2e] text-white">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5 pt-safe">
-        <div className="flex items-center gap-3"><img src="/icon.svg" alt="" className="h-9 w-9 rounded-xl" /><span className="text-[15px] font-semibold tracking-tight">Financial Planner</span></div>
+        <div className="flex items-center gap-3"><img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-9 w-9 rounded-xl" /><span className="text-[15px] font-semibold tracking-tight">Financial Planner</span></div>
         <button onClick={go} disabled={busy || !configured} className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium transition hover:bg-white/20 disabled:opacity-50">Sign in</button>
       </header>
 
