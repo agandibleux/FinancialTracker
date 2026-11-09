@@ -6,11 +6,12 @@ import { getUser, signOut } from '../local/auth';
 export function UserMenu({ className = '', up = false }: { className?: string; up?: boolean }) {
   const u = getUser();
   const [open, setOpen] = useState(false);
+  const [imgFailed, setImgFailed] = useState(false);
   if (!u) return null;
   return (
     <div className={`relative ${className}`}>
       <button onClick={() => setOpen(o => !o)} className="flex items-center gap-2 rounded-full" aria-label="Account menu" title={u.email}>
-        {u.picture ? <img src={u.picture} alt="" referrerPolicy="no-referrer" className="h-7 w-7 rounded-full" /> : <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-400 text-xs font-bold text-slate-900">{(u.name || u.email)[0]?.toUpperCase()}</span>}
+        {u.picture && !imgFailed ? <img src={u.picture} alt="" referrerPolicy="no-referrer" onError={() => setImgFailed(true)} className="h-7 w-7 rounded-full" /> : <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-400 text-xs font-bold text-slate-900">{(u.name || u.email)[0]?.toUpperCase()}</span>}
       </button>
       {open && (<>
         <button aria-label="Close" className="fixed inset-0 z-40 cursor-default" onClick={() => setOpen(false)} />
