@@ -2,6 +2,7 @@ name: Deploy to GitHub Pages
 on:
   push: { branches: [main] }
   workflow_dispatch:
+  schedule: [{ cron: '*/30 12-23 * * 1-5' }, { cron: '15 3 * * 2-6' }] # fresh prices: every 30 min on market days (UTC), plus a close-out
 permissions: { contents: read }
 concurrency: { group: pages, cancel-in-progress: true }
 jobs:
@@ -17,6 +18,9 @@ jobs:
         env:
           VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
           VITE_QUOTE_PROXY_URL: ${{ vars.VITE_QUOTE_PROXY_URL }}
+      - run: npm run prices
+        env:
+          PREV_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/prices.json
       - uses: actions/upload-pages-artifact@v3
         with: { path: dist }
   deploy:

@@ -59,16 +59,12 @@ Every later push to `main` redeploys automatically.
 
 > **Write the passphrase down.** Your data is encrypted with it in your browser. If you forget it, nobody (including you and Google) can recover the data.
 
-## 5. Optional: live prices
+## 5. Prices (automatic)
 
-Browsers can't call Yahoo or Morningstar directly, so a tiny free proxy is needed:
+Browsers can't call Yahoo or Morningstar directly, so the GitHub Actions deploy fetches prices on GitHub's servers and publishes them as `prices.json` next to the app. It runs on every push and every 30 minutes on market days. Nothing to configure.
 
-```bash
-npx wrangler deploy worker/quotes.js --name planner-quotes \
-  --compatibility-date 2025-01-01 --var ALLOWED_ORIGIN:https://YOUR-USERNAME.github.io
-```
-
-Copy the printed `https://planner-quotes.….workers.dev` URL into the `VITE_QUOTE_PROXY_URL` variable (step 3.2) and re-run the workflow. Without it the app works fine, just without automatic prices.
+- The symbols come from `tickers.json`. After adding a holding with a new ticker, run `npm run tickers` and push (the file is public: symbols only, never amounts).
+- Optional live prices: deploy `worker/quotes.js` (`npx wrangler deploy worker/quotes.js --name planner-quotes --compatibility-date 2025-01-01`) and set its URL in Settings → Sync & data (or `VITE_QUOTE_PROXY_URL`). The app then fetches live instead of using `prices.json`.
 
 ## 6. Security checklist
 

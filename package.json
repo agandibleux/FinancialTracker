@@ -11,6 +11,8 @@
     "seed": "tsx server/seed.ts",
     "test": "vitest run",
     "setup": "node scripts/setup.mjs",
+    "tickers": "tsx scripts/sync-tickers.ts",
+    "prices": "tsx scripts/fetch-prices.ts",
     "deploy": "npm run build && npx wrangler pages deploy dist --project-name financial-planner"
   },
   "dependencies": {

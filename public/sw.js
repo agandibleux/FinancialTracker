@@ -1,5 +1,5 @@
 /* App-shell cache so the planner opens offline (all data is local anyway). Bump VERSION to force a refresh of cached assets. */
-const VERSION = 'v3';
+const VERSION = 'v4';
 const CACHE = `planner-${VERSION}`;
 const ROOT = self.registration.scope; // works under a sub-path like /repo/
 const SHELL = ['', 'index.html', 'manifest.webmanifest', 'icon.svg'].map(p => ROOT + p);
@@ -15,6 +15,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
 
   if (/\/api\//.test(url.pathname)) return; // never cache API/proxy responses
+  if (url.pathname.endsWith('/prices.json')) return; // refreshed by the scheduled deploy: always ask the network
   if (url.origin !== location.origin) return; // Google sign-in, Drive API and the quote proxy always go to the network
 
   // page loads: network first (picks up new deployments), fall back to the cached shell when offline

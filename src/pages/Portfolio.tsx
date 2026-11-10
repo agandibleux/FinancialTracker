@@ -154,7 +154,7 @@ export default function Portfolio() {
     try {
       const res = await (await apiFetch('/api/holdings/refresh', { method: 'POST' })).json();
       qc.invalidateQueries();
-      if (res.noProxy) { if (!silent) toast('Set the quote proxy URL in Settings → Sync & data to fetch live prices', 'error'); }
+      if (res.noProxy) { if (!silent) toast('Price data isn’t available yet (it’s published with the site)', 'error'); }
       else if (!silent) toast(res.failed?.length ? `Updated ${res.updated}; no quote for ${res.failed.join(', ')} (set the Yahoo symbol in Edit)` : `Updated ${res.updated} prices`, res.failed?.length ? 'error' : 'success');
     } catch { if (!silent) toast('Could not fetch prices (offline?)', 'error'); }
     setBusy(false);

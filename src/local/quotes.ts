@@ -1,15 +1,39 @@
 import { getConfig } from './config';
 
-/** Browsers can't call Yahoo/Morningstar directly (no CORS), so quotes go through a tiny stateless proxy (worker/quotes.js). */
-export class NoProxyError extends Error { constructor() { super('Quote proxy URL not set (Settings → Sync & data)'); } }
+/**
+ * Browsers can't call Yahoo/Morningstar directly (no CORS). By default the published site ships prices.json, a snapshot of every
+ * upstream response the app needs, refreshed by the scheduled GitHub Actions deploy (scripts/fetch-prices.ts). Setting a quote proxy
+ * URL (worker/quotes.js) is optional and switches to live fetching.
+ */
+export class NoProxyError extends Error { constructor() { super('No price data available (prices.json missing and no quote proxy set)'); } }
+
+let snapshot: Promise<Record<string, any>> | null = null, snapshotAt = 0;
+function loadSnapshot() {
+  if (!snapshot || Date.now() - snapshotAt > 60_000) {
+    snapshotAt = Date.now();
+    snapshot = fetch(`${import.meta.env.BASE_URL}prices.json`, { cache: 'no-cache' })
+      .then(r => { if (!r.ok) throw new NoProxyError(); return r.json(); })
+      .then(j => j.data ?? {})
+      .catch(() => { snapshot = null; throw new NoProxyError(); });
+  }
+  return snapshot;
+}
 
 async function fetchJson(url: string): Promise<any> {
   const proxy = getConfig().quoteProxy.trim();
-  if (!proxy) throw new NoProxyError();
+  if (!proxy) {
+    const hit = (await loadSnapshot())[url];
+    if (!hit) throw new Error('not in price snapshot');
+    return hit;
+  }
   const res = await fetch(`${proxy}${proxy.includes('?') ? '&' : '?'}u=${encodeURIComponent(url)}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
+
+export const chartUrl = (symbol: string, range: string, interval: string) =>
+  `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`;
+export const morningstarUrl = (id: string) => `https://global.morningstar.com/api/v1/en-gb/stores/realtime/quotes?securities=${encodeURIComponent(id)}`;
 
 /**
  * Maps a ticker (plain, Google Finance "TSE:VFV", or Yahoo "VFV.TO") to a Yahoo symbol.
@@ -31,7 +55,7 @@ export function yahooSymbol(ticker: string, override = ''): string | null {
 }
 
 export async function chart(symbol: string, range: string, interval: string) {
-  const json = await fetchJson(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`);
+  const json = await fetchJson(chartUrl(symbol, range, interval));
   const r = json.chart?.result?.[0];
   if (!r?.meta?.regularMarketPrice) throw new Error('no price');
   return r;
@@ -44,7 +68,7 @@ export async function chart(symbol: string, range: string, interval: string) {
 const isMorningstarId = (symbol: string) => /^0P[0-9A-Z]{8}(\.TO)?$/.test(symbol);
 async function morningstarQuote(symbol: string) {
   const id = symbol.replace(/\.TO$/, '');
-  const q = (await fetchJson(`https://global.morningstar.com/api/v1/en-gb/stores/realtime/quotes?securities=${encodeURIComponent(id)}`))[id];
+  const q = (await fetchJson(morningstarUrl(id)))[id];
   const v = (x: any) => x?.value;
   const price = v(q?.lastPrice), date = v(q?.lastPrice?.properties?.date) ?? v(q?.date);
   if (!price) throw new Error('no price');
