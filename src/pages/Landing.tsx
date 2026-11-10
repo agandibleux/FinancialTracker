@@ -19,9 +19,9 @@ export default function Landing() {
     try { await signIn(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); setBusy(false); }
   };
   return (
-    <div className="min-h-screen bg-[#0e1a2e] text-white">
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5 pt-safe">
-        <div className="flex items-center gap-3"><img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-9 w-9 rounded-xl" /><span className="text-[15px] font-semibold tracking-tight">Financial Planner</span></div>
+    <div className="min-h-screen text-white" style={{ background: 'radial-gradient(700px 360px at 85% -5%, rgba(20,163,158,.28), transparent 70%), radial-gradient(520px 320px at 5% 0%, rgba(99,140,235,.22), transparent 70%), #0e1a2e' }}>
+      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 pb-4" style={{ paddingTop: 'calc(env(safe-area-inset-top,0px) + 1.25rem)' }}>
+        <div className="flex items-center gap-3"><img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-10 w-10 rounded-xl shadow-lg shadow-black/30 ring-1 ring-white/10" /><span className="text-[15px] font-semibold tracking-tight">Financial Planner</span></div>
         <button onClick={go} disabled={busy || !configured} className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium transition hover:bg-white/20 disabled:opacity-50">Sign in</button>
       </header>
 

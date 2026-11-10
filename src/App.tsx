@@ -86,15 +86,16 @@ export default function App() {
       </aside>
 
       {/* phone header */}
-      <header className="pt-safe fixed inset-x-0 top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl md:hidden">
-        <div className="flex h-12 items-center gap-2.5 px-4">
-          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-7 w-7 rounded-lg" />
-          <p className="text-[15px] font-semibold tracking-tight text-slate-900">Financial Planner</p>
-          <SyncChip className="ml-auto text-slate-500" /><UserMenu />
+      <header className="fixed inset-x-0 top-0 z-30 text-white shadow-[0_8px_24px_-12px_rgba(14,26,46,0.6)] md:hidden" style={{ background: 'linear-gradient(135deg,#16294a 0%,#0e1a2e 75%)', paddingTop: 'calc(env(safe-area-inset-top,0px) + .5rem)' }}>
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-emerald-400/70 to-transparent" />
+        <div className="flex h-14 items-center gap-3 px-4">
+          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-9 w-9 rounded-xl shadow-lg shadow-black/30 ring-1 ring-white/10" />
+          <div className="min-w-0"><p className="truncate text-[15px] font-semibold leading-tight tracking-tight">Financial Planner</p><p className="flex items-center gap-1.5 text-[11px] leading-tight text-slate-400"><i className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />Household · CAD</p></div>
+          <SyncChip className="ml-auto text-slate-300" /><UserMenu />
         </div>
       </header>
 
-      <main className="min-w-0 flex-1 px-4 pb-32 pt-[calc(env(safe-area-inset-top,0px)+4rem)] md:px-0 md:pb-16 md:pt-0">
+      <main className="min-w-0 flex-1 px-4 pb-32 pt-[calc(env(safe-area-inset-top,0px)+5.25rem)] md:px-0 md:pb-16 md:pt-0">
         <div className="page">
           <Routes>
             <Route path="/" element={<Dashboard />} />
