@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useCategories, useMonths, useYearExpenses } from '../api';
 import { MONTHS, money, sum } from '../lib/calc';
+import ExportExcelButton from '../components/ExportExcelButton';
 import { COLORS, Card, ChartTooltip, Kpi, PageHeader, btnGhost, inputCls, CrossTable, GRID } from '../components/ui';
 
 export default function Reports() {
@@ -48,6 +49,7 @@ export default function Reports() {
         actions={<>
           <select className={`${inputCls} !w-auto`} value={year} onChange={e => setSel(Number(e.target.value))}>{(years.length ? years : [year]).map(y => <option key={y}>{y}</option>)}</select>
           <button className={btnGhost} onClick={exportCsv}>Export CSV</button>
+          <ExportExcelButton />
         </>} />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">

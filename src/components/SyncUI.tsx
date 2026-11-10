@@ -5,6 +5,7 @@ import { getConfig, makeSetupLink, setConfig } from '../local/config';
 import { priceSourceInfo, resetSnapshot, type PriceSourceInfo } from '../local/quotes';
 import { disableLock, enableLock, lockEnabled, unlockApp } from '../local/lock';
 import { downloadBlob } from '../local/download';
+import ExportExcelButton from './ExportExcelButton';
 import { preloadGis } from '../local/drive';
 import { enableSync, exportFile, importFile, resolveConflict, restoreFromDrive, startFresh, syncNow, unlink, unlock, type Status } from '../local/sync';
 import { findVault } from '../local/drive';
@@ -346,6 +347,7 @@ export function SyncPanel() {
         <div className="mb-5 border-b border-slate-100 pb-5"><DeviceLock /></div>
         <div className="flex flex-wrap gap-2">
           <button className={btnGhost} onClick={() => downloadBlob(exportFile(), `finance-${new Date().toLocaleDateString('en-CA')}.db`)}>Download backup (.db)</button>
+          <ExportExcelButton />
           <FilePicker label="Replace with a .db file" onBytes={async b => { if (confirm('Replace ALL data on this device with the selected file?')) await importFile(b); }} />
         </div>
         {s.linked && <div className="mt-5 border-t border-slate-100 pt-4"><ClientIdFields /></div>}
