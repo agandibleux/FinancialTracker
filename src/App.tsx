@@ -48,7 +48,7 @@ const link = (isActive: boolean) =>
   `group relative flex items-center justify-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition lg:justify-start ${isActive ? 'bg-gradient-to-r from-emerald-400/20 to-white/5 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,.08)]' : 'text-slate-400 hover:bg-white/5 hover:text-white lg:hover:translate-x-0.5'}`;
 
 /** the four daily destinations live in the bottom bar; everything else sits behind "More" */
-const TABS: [string, string, LucideIcon][] = [['/', 'Home', LayoutDashboard], ['/portfolio', 'ETFs', CandlestickChart], ['/month', 'Month', CalendarDays], ['/trends', 'Trends', Activity], ['/settings', 'Settings', Cog]];
+const TABS: [string, string, LucideIcon][] = [['/', 'Home', LayoutDashboard], ['/portfolio', 'ETFs', CandlestickChart], ['/month', 'Month', CalendarDays], ['/trends', 'Trends', Activity]];
 
 export default function App() {
   useAutoPrices();
@@ -91,7 +91,6 @@ export default function App() {
           <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-9 w-9 rounded-xl shadow-lg shadow-black/30 ring-1 ring-white/10" />
           <div className="min-w-0"><p className="truncate text-[15px] font-semibold leading-tight tracking-tight">Financial Planner</p><p className="flex items-center gap-1.5 text-[11px] leading-tight text-slate-400"><i className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />Household · CAD</p></div>
           <SyncChip className="ml-auto text-slate-300" /><UserMenu />
-          <button aria-label="All pages" onClick={() => setMore(m => !m)} className="-mr-1 grid h-9 w-9 place-items-center rounded-xl text-slate-300 active:bg-white/10"><Menu size={20} /></button>
         </div>
       </header>
 
@@ -145,6 +144,7 @@ export default function App() {
             </NavLink>
           );
         })}
+        <button onClick={() => setMore(m => !m)} data-active={more} className={tab(more)}><Menu size={21} />More</button>
       </nav>
     </div>
   );
