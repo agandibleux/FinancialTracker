@@ -302,3 +302,15 @@ input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):
 .xt tbody tr.total-row > td.g-income { background-color: #a7f3d0; }
 .xt tbody tr.total-row > td.g-spend { background-color: #fecdd3; }
 .xt tbody tr.total-row > td.g-save { background-color: #bae6fd; }
+
+/* phones: keep the income / spending / saving colors on the stacked cards */
+@media (max-width: 767px) {
+  .xt.stack tbody tr > td.g-income, .xt.stack tbody tr > td.g-spend, .xt.stack tbody tr > td.g-save { padding: .45rem .65rem !important; border-radius: .7rem !important; }
+  .xt.stack tbody tr > td.g-income { background: #d1fae5 !important; }
+  .xt.stack tbody tr > td.g-spend { background: #ffe4e6 !important; }
+  .xt.stack tbody tr > td.g-save { background: #e0f2fe !important; }
+  .xt.stack tbody tr > td.g-income::before { color: #047857; }
+  .xt.stack tbody tr > td.g-spend::before { color: #be123c; }
+  .xt.stack tbody tr > td.g-save::before { color: #0369a1; }
+  .xt.stack tbody tr.total-row { border: 2px solid #475569; background: #f1f5f9; }
+}
