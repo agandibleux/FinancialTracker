@@ -202,10 +202,14 @@ export async function syncNow(interactive: boolean) {
   if (!state.linked || state.phase !== 'ready' || state.status === 'conflict') return;
   if (!keyBundle) { set({ status: 'locked', message: 'Enter your passphrase to sync on this device' }); return; }
   if (!navigator.onLine) { set({ status: 'offline', message: '' }); return; }
-  if (running) { again = true; return; }
+  // Google's popup must open inside the tap itself: ask for the token before any await, even if a background sync is running.
+  const tokenReady = interactive ? getToken(true).then(() => null, (e: unknown) => e) : null;
+  if (running) { again = true; if (tokenReady) { const err = await tokenReady; if (err) setAuthError(err); } return; }
   running = true;
   set({ status: 'syncing', message: '' });
   try {
+    const tokErr = await tokenReady;
+    if (tokErr) throw tokErr;
     await flushLocal();
     const remote = await findVault(interactive);
     const { key, salt } = keyBundle;
@@ -235,6 +239,11 @@ export async function syncNow(interactive: boolean) {
     running = false;
     if (again) { again = false; if (state.status === 'idle') setTimeout(() => void syncNow(false), 500); }
   }
+}
+
+function setAuthError(e: unknown) {
+  if (e instanceof AuthRequired) set({ status: 'auth', message: 'Google sign-in was cancelled or blocked. Allow popups for this site and tap Reconnect again.' });
+  else set({ status: 'error', message: errText(e) });
 }
 
 class Raced extends Error {}

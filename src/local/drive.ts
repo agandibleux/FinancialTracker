@@ -26,6 +26,9 @@ function loadGis(): Promise<any> {
   });
 }
 
+/** Load Google's script ahead of time so a later tap can open the popup immediately. */
+export const preloadGis = () => { void loadGis().catch(() => {}); };
+
 const TOKEN_KEY = 'planner-drive-token';
 type Tok = { value: string; exp: number };
 /** The 1 h access token survives reloads of this tab only (sessionStorage, not localStorage: it is gone when the tab closes). */

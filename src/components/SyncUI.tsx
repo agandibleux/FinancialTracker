@@ -4,6 +4,7 @@ import { Cloud, CloudOff, Copy, FileUp, Lock, LockKeyhole, RefreshCw, ShieldChec
 import { getConfig, makeSetupLink, setConfig } from '../local/config';
 import { disableLock, enableLock, lockEnabled, unlockApp } from '../local/lock';
 import { downloadBlob } from '../local/download';
+import { preloadGis } from '../local/drive';
 import { enableSync, exportFile, importFile, resolveConflict, restoreFromDrive, startFresh, syncNow, unlink, unlock, type Status } from '../local/sync';
 import { findVault } from '../local/drive';
 import { useSyncState } from '../local/useSync';
@@ -254,6 +255,7 @@ export function SyncPanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [, force] = useState(0);
+  useEffect(() => { preloadGis(); }, []);
   const l = LABEL[s.status];
   const act = async (fn: () => Promise<unknown>) => { setBusy(true); setError(''); try { await fn(); } catch (e) { setError(errMsg(e)); } setBusy(false); };
   const configured = !!getConfig().googleClientId.trim();
