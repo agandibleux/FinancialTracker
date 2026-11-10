@@ -288,3 +288,17 @@ input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):
   .lp-aurora i, .lp-grid, .lp-stage, .lp-chip, .lp-bars i, .lp-accts b i, .lp-wire i, .lp-lock, .lp-h1 em, .lp-savebar > div > span { animation: none !important; }
   .lp-line { stroke-dashoffset: 0; } .lp-area, .lp-dot { opacity: 1; }
 }
+
+/* month-by-month table: income / spending / saving column groups (after the .xt rules so they win) */
+.xt thead th.g-income { background: #d1fae5; color: #065f46; box-shadow: inset 0 -3px 0 #34d399; }
+.xt thead th.g-spend { background: #ffe4e6; color: #9f1239; box-shadow: inset 0 -3px 0 #fb7185; }
+.xt thead th.g-save { background: #e0f2fe; color: #075985; box-shadow: inset 0 -3px 0 #38bdf8; }
+.xt tbody td.g-income { background-color: #ecfdf5; }
+.xt tbody td.g-spend { background-color: #fff1f2; }
+.xt tbody td.g-save { background-color: #f0f9ff; }
+
+/* Total rows: heavier, darker, ruled off from the rows above */
+.xt tbody tr.total-row > * { background-color: #e2e8f0; color: #0f172a; font-weight: 700; border-top: 2px solid #475569; border-bottom: 0; }
+.xt tbody tr.total-row > td.g-income { background-color: #a7f3d0; }
+.xt tbody tr.total-row > td.g-spend { background-color: #fecdd3; }
+.xt tbody tr.total-row > td.g-save { background-color: #bae6fd; }

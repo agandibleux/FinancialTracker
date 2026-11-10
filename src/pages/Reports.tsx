@@ -5,6 +5,11 @@ import { MONTHS, money, sum } from '../lib/calc';
 import ExportExcelButton from '../components/ExportExcelButton';
 import { COLORS, Card, ChartTooltip, Kpi, PageHeader, btnGhost, inputCls, CrossTable, GRID } from '../components/ui';
 
+// Column groups of the month-by-month table (styled in index.css: .g-income / .g-spend / .g-save).
+const colGroup = ['income', 'spend', 'spend', 'spend', 'spend', 'spend', 'save', 'save', 'save', 'save', 'save'] as const;
+const BOLD = [0, 4, 7]; // Income, Expenses, Actual savings
+const g = (i: number) => `g-${colGroup[i]}${BOLD.includes(i) ? ' font-bold' : ''}`;
+
 export default function Reports() {
   const months = useMonths().data ?? [];
   const cats = useCategories().data ?? [];
@@ -60,28 +65,29 @@ export default function Reports() {
         <Kpi label="Actual savings" value={money(actual)} hint={`${income ? ((actual / income) * 100).toFixed(0) : 0}% of income`} tone="violet" />
       </div>
 
-      <Card title="Month by month">
+      <Card title="Month by month" right={<span className="inline-flex gap-3 text-xs font-medium"><span className="text-emerald-700">● Income</span><span className="text-rose-700">● Spending</span><span className="text-sky-700">● Saving</span></span>}>
         <div className="overflow-x-auto">
           <CrossTable><table className="w-full min-w-[900px] text-sm">
-            <thead><tr><th className={`${th} text-left`}>Month</th>{['Income', 'Fixed', 'Utilities', 'Variable', 'Expenses', 'Living', 'Predicted', 'Actual', 'Gap', 'Cash', 'Invested'].map(h => <th key={h} className={th}>{h}</th>)}</tr></thead>
+            <thead>
+              <tr><th className={`${th} text-left`}>Month</th>{['Income', 'Fixed', 'Utilities', 'Variable', 'Expenses', 'Living', 'Predicted', 'Actual', 'Gap', 'Cash', 'Invested'].map((h, i) => <th key={h} className={`${th} ${g(i)}`}>{h}</th>)}</tr>
+            </thead>
             <tbody>
               {rows.map(m => (
                 <tr key={m.month} className="border-t border-slate-100">
                   <td className="px-2 py-1.5">{MONTHS[m.month - 1]}</td>
-                  <td className={td}>{money(m.income)}</td><td className={td}>{money(m.fixed)}</td><td className={td}>{money(m.utility)}</td><td className={td}>{money(m.variable)}</td>
-                  <td className={`${td} font-medium`}>{money(m.expenses)}</td><td className={td}>{money(m.living)}</td><td className={td}>{money(m.predicted)}</td>
-                  <td className={td}>{m.actual == null ? '—' : money(m.actual)}</td>
-                  <td className={`${td} ${m.actual == null ? '' : m.actual - m.predicted >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{m.actual == null ? '—' : money(m.actual - m.predicted)}</td>
-                  <td className={td}>{money(m.to_cash)}</td><td className={td}>{money(m.to_investments)}</td>
+                  {[money(m.income), money(m.fixed), money(m.utility), money(m.variable), money(m.expenses), money(m.living), money(m.predicted),
+                    m.actual == null ? '—' : money(m.actual), m.actual == null ? '—' : money(m.actual - m.predicted), money(m.to_cash), money(m.to_investments)].map((v, i) => (
+                    <td key={i} className={`${td} ${g(i)} ${i === 8 && m.actual != null ? (m.actual - m.predicted >= 0 ? 'text-emerald-600' : 'text-rose-600') : ''}`}>{v}</td>
+                  ))}
                 </tr>
               ))}
-              <tr className="border-t border-slate-300 font-semibold">
-                <td className="px-2 py-2">Total</td>
-                {[tot(m => m.income), tot(m => m.fixed), tot(m => m.utility), tot(m => m.variable), expenses, living, predicted, actual, tot(m => m.actual == null ? 0 : m.actual - m.predicted), tot(m => m.to_cash), tot(m => m.to_investments)].map((v, i) => <td key={i} className={td}>{money(v)}</td>)}
+              <tr className="total-row">
+                <td className="px-2 py-2 uppercase tracking-wide">Total</td>
+                {[tot(m => m.income), tot(m => m.fixed), tot(m => m.utility), tot(m => m.variable), expenses, living, predicted, actual, tot(m => m.actual == null ? 0 : m.actual - m.predicted), tot(m => m.to_cash), tot(m => m.to_investments)].map((v, i) => <td key={i} className={`${td} ${g(i)}`}>{money(v)}</td>)}
               </tr>
               <tr className="text-slate-500">
                 <td className="px-2 py-1.5">Average</td>
-                {[income, tot(m => m.fixed), tot(m => m.utility), tot(m => m.variable), expenses, living, predicted, actual, 0, tot(m => m.to_cash), tot(m => m.to_investments)].map((v, i) => <td key={i} className={td}>{i === 8 ? '' : money(v / (i >= 7 ? nActual : n))}</td>)}
+                {[income, tot(m => m.fixed), tot(m => m.utility), tot(m => m.variable), expenses, living, predicted, actual, 0, tot(m => m.to_cash), tot(m => m.to_investments)].map((v, i) => <td key={i} className={`${td} ${g(i)}`}>{i === 8 ? '' : money(v / (i >= 7 ? nActual : n))}</td>)}
               </tr>
             </tbody>
           </table></CrossTable>
