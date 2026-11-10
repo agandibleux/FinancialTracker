@@ -10,7 +10,7 @@
 import { exportDb, hasDb, openDb, setWriteHook } from './db';
 import { mergeDatabases } from './merge';
 import { deriveKey, newSalt, open, readSalt, seal, WrongPassphrase } from './crypto';
-import { AuthRequired, Offline, disconnect, downloadVault, findVault, getToken, uploadVault, wasConnected } from './drive';
+import { AuthRequired, Offline, disconnect, downloadVault, findVault, getToken, keepFresh, uploadVault, wasConnected } from './drive';
 import { META_DEFAULT, kvDel, kvGet, kvSet, loadBase, loadDbBytes, loadMeta, pushBackup, saveBase, saveDbBytes, saveMeta, type SyncMeta } from './storage';
 
 export type Status = 'local' | 'idle' | 'syncing' | 'offline' | 'auth' | 'locked' | 'conflict' | 'error';
@@ -107,9 +107,9 @@ function startListeners() {
   if (listening) return;
   listening = true;
   window.addEventListener('online', () => void syncNow(false));
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') void syncNow(false); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { keepFresh(); void syncNow(false); } });
   window.addEventListener('pagehide', () => { if (meta.dirty) void flushLocal(); });
-  setInterval(() => { if (document.visibilityState === 'visible') void syncNow(false); }, 60_000);
+  setInterval(() => { if (document.visibilityState === 'visible') { keepFresh(); void syncNow(false); } }, 60_000);
 }
 
 async function rememberKey(remember: boolean) {

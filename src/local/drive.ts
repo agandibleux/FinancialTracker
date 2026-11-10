@@ -31,9 +31,18 @@ export const preloadGis = () => { void loadGis().catch(() => {}); };
 
 const TOKEN_KEY = 'planner-drive-token';
 type Tok = { value: string; exp: number };
-/** The 1 h access token survives reloads of this tab only (sessionStorage, not localStorage: it is gone when the tab closes). */
-let token: Tok | null = (() => { try { return JSON.parse(sessionStorage.getItem(TOKEN_KEY) ?? 'null'); } catch { return null; } })();
-const setToken = (t: Tok | null) => { token = t; if (t) sessionStorage.setItem(TOKEN_KEY, JSON.stringify(t)); else sessionStorage.removeItem(TOKEN_KEY); };
+/**
+ * The 1 h access token (drive.appdata scope only) is kept in localStorage so reopening the app or the installed PWA within the hour
+ * needs no renewal at all. Google gives browser apps no refresh token, so after it expires we renew silently (see keepFresh).
+ */
+let token: Tok | null = (() => {
+  try {
+    sessionStorage.removeItem(TOKEN_KEY); // older versions stored it here
+    const t = JSON.parse(localStorage.getItem(TOKEN_KEY) ?? 'null');
+    return t && t.exp > Date.now() ? t : null;
+  } catch { return null; }
+})();
+const setToken = (t: Tok | null) => { token = t; if (t) localStorage.setItem(TOKEN_KEY, JSON.stringify(t)); else localStorage.removeItem(TOKEN_KEY); };
 export const wasConnected = () => localStorage.getItem(connectedKey()) === '1';
 /** Tells Google to invalidate the access token (sign-out). Best effort. */
 export async function revokeToken() {
@@ -44,13 +53,13 @@ export async function revokeToken() {
 }
 export const disconnect = () => { setToken(null); localStorage.removeItem(connectedKey()); };
 
-const SILENT_COOLDOWN = 30 * 60_000; // after a failed silent renewal, don't flash Google's popup again until the user taps Reconnect
+const SILENT_COOLDOWN = 5 * 60_000; // after a failed silent renewal, wait before trying again (until the user taps Reconnect)
 let silentFailedAt = 0;
 let pending: Promise<string> | null = null;
 
 /** interactive=true opens Google's sign-in popup (needs a user tap); otherwise tries to renew silently (at most one attempt at a time). */
-export async function getToken(interactive: boolean): Promise<string> {
-  if (token && token.exp > Date.now() + 60_000) return token.value;
+export async function getToken(interactive: boolean, margin = 60_000): Promise<string> {
+  if (token && token.exp > Date.now() + margin) return token.value;
   if (!interactive && Date.now() - silentFailedAt < SILENT_COOLDOWN) throw new AuthRequired();
   if (pending) return pending;
   const clientId = getConfig().googleClientId.trim();
@@ -76,6 +85,15 @@ export async function getToken(interactive: boolean): Promise<string> {
     });
   })().finally(() => { pending = null; });
   return pending;
+}
+
+/**
+ * Renew the access token in the background while it still has <15 min left, so it is replaced before it ever lapses
+ * (called every minute and when the app comes back to the foreground). Silent: never opens a popup.
+ */
+export function keepFresh() {
+  if (!wasConnected() || pending || (token && token.exp > Date.now() + 15 * 60_000)) return;
+  getToken(false, 15 * 60_000).catch(() => { /* stays valid until expiry; the UI asks for Reconnect only if it truly lapses */ });
 }
 
 async function call(path: string, init: RequestInit, interactive: boolean, retried = false): Promise<Response> {
