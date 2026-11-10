@@ -25,24 +25,6 @@ SELECT m.year, m.month, m.note,
   s.to_cash, s.to_investments
 FROM month m LEFT JOIN savings_actual s ON s.month_id=m.id`;
 
-/**
- * Bonus lines are lump sums that would spike the charts, so the summaries spread each year's bonus evenly over
- * its 12 months (as if it had always been part of monthly income). Entries stay untouched in the month itself.
- */
-function spreadBonuses(rows: Row[]) {
-  const bonus = new Map<number, number>();
-  for (const b of all(`SELECT m.year, SUM(i.amount) AS amount FROM income_entry i JOIN month m ON m.id=i.month_id
-    WHERE LOWER(i.source) LIKE '%bonus%' GROUP BY m.year`)) bonus.set(b.year, b.amount);
-  return rows.map(x => {
-    const own = all(`SELECT COALESCE(SUM(i.amount),0) AS a FROM income_entry i JOIN month m ON m.id=i.month_id
-      WHERE m.year=? AND m.month=? AND LOWER(i.source) LIKE '%bonus%'`, x.year, x.month)[0]?.a ?? 0;
-    const share = (bonus.get(x.year) ?? 0) / 12;
-    if (!share && !own) return x;
-    const active = x.income > 0 || x.expenses > 0;
-    return { ...x, income: x.income - own + (active ? share : 0) };
-  });
-}
-
 const HCOLS = ['account_id', 'ticker', 'quote_symbol', 'info', 'sector', 'expense_ratio', 'yield_pct', 'shares', 'avg_price', 'price',
   'prev_close', 'price_date', 'target_pct', 'usa', 'can', 'other_geo', 'stocks', 'bonds', 'other_cls'];
 const hvals = (h: Row) => HCOLS.map(c => h[c] ?? (['ticker', 'quote_symbol', 'info', 'sector', 'price_date'].includes(c) ? '' : 0));
@@ -152,7 +134,7 @@ const routes: [string, RegExp, Handler][] = [
   ['DELETE', /^cards\/(\d+)$/, ({ p }) => { run('DELETE FROM credit_card WHERE id=?', p[0]); return ok(); }],
 
   // ---- months ----
-  ['GET', /^months$/, () => spreadBonuses(all(`${SUMMARY_SQL} ORDER BY m.year, m.month`)).map(x => ({
+  ['GET', /^months$/, () => all(`${SUMMARY_SQL} ORDER BY m.year, m.month`).map(x => ({
     ...x,
     predicted: x.income - x.expenses,
     to_cash: x.to_cash ?? 0,
