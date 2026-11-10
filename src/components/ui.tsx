@@ -170,6 +170,9 @@ const resolve = (text: string, base: number): number | null => {
  * It is also a calculator: type 12.5+8*3 or, on a filled field, +45 / −20 / *2 to work on what is there,
  * or open the keypad (calculator icon on hover or focus) to Add, Subtract or Replace.
  */
+/** True on phones/tablets, where the on-screen keyboard should stay hidden in favour of the keypad. */
+const isTouch = () => window.matchMedia('(pointer: coarse)').matches;
+
 export function MoneyInput({ value, onChange, placeholder = '0.00', big = false }: { value: number; onChange: (n: number) => void; placeholder?: string; big?: boolean }) {
   const [text, setText] = useState<string | null>(null); // non-null while focused
   const [open, setOpen] = useState(false);
@@ -185,13 +188,17 @@ export function MoneyInput({ value, onChange, placeholder = '0.00', big = false 
       <span className={`absolute left-1 top-1/2 grid h-8 w-6 -translate-y-1/2 place-items-center ${big ? 'text-base' : 'text-sm'}`}>
         <span className={`pointer-events-none text-slate-400 ${open ? 'hidden' : 'group-focus-within:hidden group-hover:hidden'}`}>$</span>
         <button type="button" tabIndex={-1} aria-label="Open calculator" title="Calculator: add to, subtract from or replace this amount"
-          onMouseDown={e => e.preventDefault()} onClick={e => { e.preventDefault(); base.current = value; setOpen(o => !o); }}
+          onMouseDown={e => e.preventDefault()} onClick={e => { e.preventDefault(); base.current = value; (document.activeElement as HTMLElement | null)?.blur(); setOpen(o => !o); }}
           className={`h-6 w-6 place-items-center rounded-lg text-indigo-500 transition hover:bg-indigo-50 hover:text-indigo-700 ${open ? 'grid bg-indigo-50' : 'hidden group-focus-within:grid group-hover:grid'}`}><Calculator size={14} /></button>
       </span>
-      <input type="text" inputMode="text" placeholder={ph} enterKeyHint="next"
+      <input type="text" inputMode={isTouch() ? 'none' : 'text'} placeholder={ph} enterKeyHint="next"
         className={`${inputCls} tabular pl-7 text-right ${big ? '!text-base font-semibold' : ''}`}
         value={text ?? idle}
-        onFocus={e => { base.current = value; setText(value ? String(value) : ''); requestAnimationFrame(() => e.target.select()); }}
+        onFocus={e => {
+          base.current = value;
+          if (isTouch()) { setOpen(true); e.target.blur(); return; } // keypad instead of the system keyboard
+          setText(value ? String(value) : ''); requestAnimationFrame(() => e.target.select());
+        }}
         onBlur={commit}
         onKeyDown={e => { if (e.key === 'Enter') commit(); }}
         onChange={e => {
@@ -221,7 +228,7 @@ function CalcPopover({ anchor, base, onApply, onClose }: { anchor: HTMLElement; 
   const [mode, setMode] = useState<(typeof MODES)[number]['id']>(base ? 'add' : 'set');
   const panel = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLInputElement>(null);
-  const small = window.innerWidth < 640;
+  const small = window.innerWidth < 640, touch = isTouch();
   const amount = evalExpr(expr);
   const result = amount == null ? null : r2(mode === 'add' ? base + amount : mode === 'sub' ? base - amount : amount);
   const apply = () => {
@@ -229,7 +236,7 @@ function CalcPopover({ anchor, base, onApply, onClose }: { anchor: HTMLElement; 
     onApply(result, mode === 'add' ? `Added ${money(amount)} → ${money(result)}` : mode === 'sub' ? `Subtracted ${money(amount)} → ${money(result)}` : `Set to ${money(result)}`);
   };
   useEffect(() => {
-    if (!small) field.current?.focus();
+    if (!touch) field.current?.focus();
     const down = (e: globalThis.MouseEvent) => { const t = e.target as Node; if (!panel.current?.contains(t) && !anchor.contains(t)) onClose(); };
     const key = (e: globalThis.KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('mousedown', down); document.addEventListener('keydown', key);
@@ -237,7 +244,7 @@ function CalcPopover({ anchor, base, onApply, onClose }: { anchor: HTMLElement; 
   }, []);
   const press = (k: string) => {
     setExpr(e => k === 'C' ? '' : k === '⌫' ? e.slice(0, -1) : e + k);
-    if (!small) field.current?.focus();
+    if (!touch) field.current?.focus();
   };
   const W = 304, H = 440, r = anchor.getBoundingClientRect();
   const pos: React.CSSProperties = small ? {} : {
@@ -265,7 +272,7 @@ function CalcPopover({ anchor, base, onApply, onClose }: { anchor: HTMLElement; 
           </div>
         )}
         <div className="rounded-2xl bg-slate-50 px-4 py-3 text-right ring-1 ring-slate-200/70 focus-within:ring-indigo-300">
-          <input ref={field} value={expr} placeholder="0" aria-label="Expression" inputMode={small ? 'none' : 'text'} autoComplete="off"
+          <input ref={field} value={expr} placeholder="0" aria-label="Expression" inputMode={touch ? 'none' : 'text'} autoComplete="off"
             onChange={e => setExpr(e.target.value.replace(/x/gi, '×').replace(/[^0-9.+\-*/×÷()%−–]/g, ''))}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); apply(); } }}
             className="tabular w-full bg-transparent text-right text-xl font-medium text-slate-700 outline-none placeholder:text-slate-300" />
