@@ -48,14 +48,13 @@ const link = (isActive: boolean) =>
   `group relative flex items-center justify-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition lg:justify-start ${isActive ? 'bg-gradient-to-r from-emerald-400/20 to-white/5 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,.08)]' : 'text-slate-400 hover:bg-white/5 hover:text-white lg:hover:translate-x-0.5'}`;
 
 /** the four daily destinations live in the bottom bar; everything else sits behind "More" */
-const TABS: [string, string, LucideIcon][] = [['/', 'Home', LayoutDashboard], ['/month', 'Month', CalendarDays], ['/accounts', 'Accounts', Landmark], ['/trends', 'Trends', Activity]];
+const TABS: [string, string, LucideIcon][] = [['/', 'Home', LayoutDashboard], ['/portfolio', 'ETFs', CandlestickChart], ['/month', 'Month', CalendarDays], ['/trends', 'Trends', Activity], ['/settings', 'Settings', Cog]];
 
 export default function App() {
   useAutoPrices();
   const [more, setMore] = useState(false);
   const { pathname } = useLocation();
   useEffect(() => { setMore(false); window.scrollTo(0, 0); }, [pathname]);
-  const inTabs = TABS.some(([to]) => (to === '/' ? pathname === '/' : pathname.startsWith(to)));
   const tab = (active: boolean) => `tab-item isolate flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-1.5 text-[11px] font-semibold transition ${active ? 'text-indigo-700' : 'text-slate-500'}`;
 
   return (
@@ -92,6 +91,7 @@ export default function App() {
           <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-9 w-9 rounded-xl shadow-lg shadow-black/30 ring-1 ring-white/10" />
           <div className="min-w-0"><p className="truncate text-[15px] font-semibold leading-tight tracking-tight">Financial Planner</p><p className="flex items-center gap-1.5 text-[11px] leading-tight text-slate-400"><i className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />Household · CAD</p></div>
           <SyncChip className="ml-auto text-slate-300" /><UserMenu />
+          <button aria-label="All pages" onClick={() => setMore(m => !m)} className="-mr-1 grid h-9 w-9 place-items-center rounded-xl text-slate-300 active:bg-white/10"><Menu size={20} /></button>
         </div>
       </header>
 
@@ -131,12 +131,20 @@ export default function App() {
         ))}
       </div>
       <nav className="pb-safe fixed inset-x-3 bottom-3 z-50 flex items-stretch rounded-3xl border border-slate-200/80 bg-white/90 px-2 pt-1.5 shadow-[0_12px_32px_-8px_rgba(14,26,46,0.35)] backdrop-blur-xl md:hidden" style={{ bottom: 'calc(env(safe-area-inset-bottom,0px) + .75rem)', paddingBottom: '.375rem' }}>
-        {TABS.map(([to, label, Icon]) => (
-          <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => tab(isActive && !more)} data-active={(to === '/' ? pathname === '/' : pathname.startsWith(to)) && !more}>
-            <Icon size={21} />{label}
-          </NavLink>
-        ))}
-        <button onClick={() => setMore(m => !m)} data-active={more || !inTabs} className={tab(more || !inTabs)}><Menu size={21} />More</button>
+        {TABS.map(([to, label, Icon]) => {
+          const on = (to === '/' ? pathname === '/' : pathname.startsWith(to)) && !more;
+          if (to === '/month') return (
+            <NavLink key={to} to={to} aria-label={label} className="relative flex flex-1 flex-col items-center justify-end gap-1 pb-1 text-[11px] font-bold text-indigo-700">
+              <span className={`-mt-6 grid h-14 w-14 place-items-center rounded-full text-white ring-4 ring-white transition-transform active:scale-95 ${on ? 'scale-105' : ''}`} style={{ background: 'linear-gradient(135deg,#4f46e5,#2563eb)', boxShadow: '0 10px 22px -6px rgba(79,70,229,.7)' }}><Icon size={26} /></span>
+              {label}
+            </NavLink>
+          );
+          return (
+            <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => tab(isActive && !more)} data-active={on}>
+              <Icon size={21} />{label}
+            </NavLink>
+          );
+        })}
       </nav>
     </div>
   );

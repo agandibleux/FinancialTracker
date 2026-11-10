@@ -12,6 +12,11 @@ const KIND_INFO: Record<Category['kind'], { title: string; hint: string }> = {
   variable: { title: 'Spending', hint: 'Everyday spending and one-offs. Untick “living” for things like trips or big purchases.' },
 };
 
+const thCls = 'pb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500';
+const Field = ({ label, children, className = '' }: { label: string; children: React.ReactNode; className?: string }) => (
+  <label className={`block min-w-0 ${className}`}><span className="mb-1 block text-xs font-medium text-slate-500">{label}</span>{children}</label>
+);
+
 export default function Settings() {
   const [tab, setTab] = useState<Tab>(() => (new URLSearchParams(location.search).get('tab') as Tab | null) ?? 'categories');
   const people = usePeople().data ?? [];
@@ -66,13 +71,13 @@ export default function Settings() {
       </td>
       <td className="w-36 pr-2"><MoneyInput value={c.default_amount} onChange={v => saveCat.mutate({ ...c, default_amount: v })} /></td>
       <td className="w-20 text-center">
-        {c.kind === 'fixed' ? <span className="text-xs text-slate-400">never</span>
+        {c.kind === 'fixed' ? <span className="text-xs text-slate-500">never</span>
           : <input type="checkbox" checked={!!c.counts_as_living} onChange={e => saveCat.mutate({ ...c, counts_as_living: e.target.checked ? 1 : 0 })} />}
       </td>
       <td className="w-24 text-right">
         <button className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900" title={c.archived ? 'Restore' : 'Archive (hide from new months)'} onClick={() => saveCat.mutate({ ...c, archived: c.archived ? 0 : 1 })}>
           {c.archived ? <ArchiveRestore size={16} /> : <Archive size={16} />}</button>
-        <button className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-rose-600" title="Delete (removes its history)" onClick={() => confirm(`Delete “${c.name}” and all its history?`) && delCat.mutate(c.id)}><Trash2 size={16} /></button>
+        <button className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-rose-600" title="Delete (removes its history)" onClick={() => confirm(`Delete “${c.name}” and all its history?`) && delCat.mutate(c.id)}><Trash2 size={16} /></button>
       </td>
     </tr>
   );
@@ -93,7 +98,7 @@ export default function Settings() {
           <Card key={kind} title={KIND_INFO[kind].title} subtitle={KIND_INFO[kind].hint}
             right={<Badge tone={kind === 'fixed' ? 'violet' : kind === 'utility' ? 'amber' : 'blue'}>{cats.filter(c => c.kind === kind && !c.archived).length} active</Badge>}>
             <CrossTable><table className="w-full text-sm">
-              <thead className="text-left text-xs text-slate-400"><tr><th className="pb-1 font-medium">Name</th><th className="font-medium">Group under</th><th className="font-medium">Monthly template</th><th className="text-center font-medium">Living</th><th /></tr></thead>
+              <thead className="text-left"><tr><th className={thCls}>Name</th><th className={thCls}>Group under</th><th className={thCls}>Monthly template</th><th className={`${thCls} text-center`}>Living</th><th /></tr></thead>
               <tbody>
                 {cats.filter(c => c.kind === kind && (showArchived || !c.archived)).map(catRow)}
                 {nc.kind === kind && (
@@ -119,23 +124,27 @@ export default function Settings() {
               <button className={btnCls} onClick={importLegacy}>Move them here</button>
             </div>
           )}
-          <CrossTable><table className="w-full text-sm">
-            <thead className="text-left text-xs text-slate-400"><tr><th className="pb-1 font-medium">Card</th><th className="font-medium">Credit limit</th><th /></tr></thead>
-            <tbody>
-              {cards.map(c => (
-                <tr key={c.id} className="border-t border-slate-100">
-                  <td className="py-1.5 pr-2"><input className={inputCls} defaultValue={c.name} onBlur={e => e.target.value.trim() && e.target.value !== c.name && saveCard.mutate({ ...c, name: e.target.value.trim() })} /></td>
-                  <td className="w-44 pr-2"><MoneyInput value={c.credit_limit} onChange={v => saveCard.mutate({ ...c, credit_limit: v })} /></td>
-                  <td className="w-10 text-right"><button className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-rose-600" title="Remove card" aria-label={`Remove ${c.name}`} onClick={() => confirm(`Remove “${c.name}”? Its monthly amounts are deleted too.`) && delCard.mutate(c.id)}><Trash2 size={16} /></button></td>
-                </tr>
-              ))}
-              <tr className="border-t border-slate-200">
-                <td className="py-2 pr-2"><input className={inputCls} placeholder="New card name" value={nCard.name} onChange={e => setNCard({ ...nCard, name: e.target.value })} /></td>
-                <td className="pr-2"><MoneyInput value={nCard.credit_limit} onChange={v => setNCard({ ...nCard, credit_limit: v })} /></td>
-                <td className="text-right"><button className={btnCls} disabled={!nCard.name.trim()} onClick={() => { addCard.mutate({ name: nCard.name.trim(), credit_limit: nCard.credit_limit }); setNCard({ name: '', credit_limit: 0 }); }}>Add</button></td>
-              </tr>
-            </tbody>
-          </table></CrossTable>
+          <div className="space-y-3">
+            {cards.length === 0 && <p className="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">No cards yet – add your first one below.</p>}
+            {cards.map(c => (
+              <div key={c.id} className="flex items-end gap-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-3 sm:p-4">
+                <span className="mb-1 hidden h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-100 text-indigo-600 sm:grid"><CardIcon size={18} /></span>
+                <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-[minmax(0,1fr)_200px]">
+                  <Field label="Card name"><input className={inputCls} defaultValue={c.name} onBlur={e => e.target.value.trim() && e.target.value !== c.name && saveCard.mutate({ ...c, name: e.target.value.trim() })} /></Field>
+                  <Field label="Credit limit"><MoneyInput value={c.credit_limit} onChange={v => saveCard.mutate({ ...c, credit_limit: v })} /></Field>
+                </div>
+                <button className="mb-0.5 rounded-xl p-2.5 text-slate-500 hover:bg-white hover:text-rose-600" title="Remove card" aria-label={`Remove ${c.name}`} onClick={() => confirm(`Remove “${c.name}”? Its monthly amounts are deleted too.`) && delCard.mutate(c.id)}><Trash2 size={18} /></button>
+              </div>
+            ))}
+            <div className="rounded-2xl border border-dashed border-slate-300 p-3 sm:p-4">
+              <p className="mb-3 text-sm font-semibold text-slate-800">Add a card</p>
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_200px_auto] sm:items-end">
+                <Field label="Card name"><input className={inputCls} placeholder="e.g. Visa Infinite" value={nCard.name} onChange={e => setNCard({ ...nCard, name: e.target.value })} /></Field>
+                <Field label="Credit limit"><MoneyInput value={nCard.credit_limit} onChange={v => setNCard({ ...nCard, credit_limit: v })} /></Field>
+                <button className={btnCls} disabled={!nCard.name.trim()} onClick={() => { addCard.mutate({ name: nCard.name.trim(), credit_limit: nCard.credit_limit }); setNCard({ name: '', credit_limit: 0 }); }}><Plus size={16} />Add card</button>
+              </div>
+            </div>
+          </div>
         </Card>
       )}
 
@@ -143,8 +152,8 @@ export default function Settings() {
 
       {tab === 'people' && (
         <Card title="People" subtitle="Used for income and registered-account room" right={<button className={btnCls} onClick={() => savePeople.mutate(names)}>Save</button>}>
-          <div className="max-w-md space-y-2">
-            {names.map((p, i) => <input key={p.id || `n${i}`} className={inputCls} value={p.name} onChange={e => setNames(n => n.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} />)}
+          <div className="max-w-md space-y-3">
+            {names.map((p, i) => <Field key={p.id || `n${i}`} label={`Person ${i + 1}`}><input className={inputCls} value={p.name} onChange={e => setNames(n => n.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} /></Field>)}
             <button className={btnGhost} onClick={() => setNames(n => [...n, { id: 0, name: 'New person' }])}><Plus size={14} />Add person</button>
           </div>
         </Card>
@@ -180,15 +189,15 @@ export default function Settings() {
             ))}
           </div>
           <p className="mb-4 rounded-2xl bg-sky-50 px-4 py-3 text-xs leading-relaxed text-sky-800"><b>House down payment ≠ home equity.</b> Down payment is cash you are saving (FHSA) to buy a home. Home equity is what a home you already own is worth minus the mortgage. They count separately, and equity is not treated as investable money.</p>
-          <div className="max-w-2xl space-y-2">
+          <div className="space-y-3">
             {accs.length === 0 && <p className="text-sm text-slate-500">No accounts yet – add your TFSA, RRSP, FHSA, savings and brokerage accounts.</p>}
             {accs.map((a, i) => (
-              <div key={a.id || `n${i}`} className="grid grid-cols-2 items-center gap-2 rounded-2xl bg-slate-50/70 p-3 sm:grid-cols-[110px_110px_1fr_1fr_auto] sm:bg-transparent sm:p-0">
-                <select className={inputCls} value={a.person_id} onChange={e => setAccs(x => x.map((r, j) => j === i ? { ...r, person_id: Number(e.target.value) } : r))}>{people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
-                <select className={inputCls} value={a.type} onChange={e => setAccs(x => x.map((r, j) => j === i ? { ...r, type: e.target.value as any } : r))}>{ACCOUNT_TYPES.map(t => <option key={t} value={t}>{ACCOUNT_META[t].label}</option>)}</select>
-                <input className={inputCls} value={a.name} onChange={e => setAccs(x => x.map((r, j) => j === i ? { ...r, name: e.target.value } : r))} />
-                <MoneyInput value={a.balance} onChange={v => setAccs(x => x.map((r, j) => j === i ? { ...r, balance: v } : r))} />
-                <button className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-rose-600" onClick={() => a.id ? delAccount.mutate(a.id) : setAccs(x => x.filter((_, j) => j !== i))}><Trash2 size={16} /></button>
+              <div key={a.id || `n${i}`} className="grid grid-cols-2 items-end gap-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-3 sm:grid-cols-[110px_130px_1fr_150px_auto]">
+                <Field label="Owner"><select className={inputCls} value={a.person_id} onChange={e => setAccs(x => x.map((r, j) => j === i ? { ...r, person_id: Number(e.target.value) } : r))}>{people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+                <Field label="Type"><select className={inputCls} value={a.type} onChange={e => setAccs(x => x.map((r, j) => j === i ? { ...r, type: e.target.value as any } : r))}>{ACCOUNT_TYPES.map(t => <option key={t} value={t}>{ACCOUNT_META[t].label}</option>)}</select></Field>
+                <Field label="Name" className="col-span-2 sm:col-span-1"><input className={inputCls} value={a.name} onChange={e => setAccs(x => x.map((r, j) => j === i ? { ...r, name: e.target.value } : r))} /></Field>
+                <Field label="Balance"><MoneyInput value={a.balance} onChange={v => setAccs(x => x.map((r, j) => j === i ? { ...r, balance: v } : r))} /></Field>
+                <button className="justify-self-end rounded-xl p-2.5 text-slate-500 hover:bg-white hover:text-rose-600" aria-label="Remove account" onClick={() => a.id ? delAccount.mutate(a.id) : setAccs(x => x.filter((_, j) => j !== i))}><Trash2 size={18} /></button>
               </div>
             ))}
             <button className={btnGhost} onClick={() => setAccs(x => [...x, { id: 0, person_id: people[0]?.id ?? 1, type: 'TFSA', name: 'TFSA', balance: 0 }])}><Plus size={14} />Add account</button>
@@ -200,7 +209,7 @@ export default function Settings() {
         <Card title={`Contribution room for ${year}`} subtitle="What you can put in on Jan 1 and what is already contributed. Re-enter each year – check your official limits in CRA My Account."
           right={<button className={btnCls} onClick={() => saveRooms.mutate(rms)}>Save</button>}>
           <CrossTable><table className="w-full max-w-2xl text-sm">
-            <thead className="text-left text-xs text-slate-400"><tr><th className="pb-1 font-medium">Person</th><th className="font-medium">Account</th><th className="font-medium">Room</th><th className="font-medium">Already contributed</th></tr></thead>
+            <thead className="text-left"><tr><th className={thCls}>Person</th><th className={thCls}>Account</th><th className={thCls}>Room</th><th className={thCls}>Already contributed</th></tr></thead>
             <tbody>
               {people.flatMap(p => REGISTERED.map(t => {
                 const idx = rms.findIndex(r => r.person_id === p.id && r.account_type === t && r.year === year);
