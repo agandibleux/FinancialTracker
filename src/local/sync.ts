@@ -210,6 +210,12 @@ let again = false;
 
 /** interactive=true is only passed from a button tap (Google may open a popup). */
 export async function syncNow(interactive: boolean) {
+  // one sync at a time across tabs of this browser (a stale tab must not push over a newer Drive version)
+  if (navigator.locks && !interactive) return navigator.locks.request('planner-sync', () => syncOnce(interactive));
+  return syncOnce(interactive);
+}
+
+async function syncOnce(interactive: boolean) {
   if (!state.linked || state.phase !== 'ready' || state.status === 'conflict') return;
   if (!keyBundle) { set({ status: 'locked', message: 'Enter your passphrase to sync on this device' }); return; }
   if (!navigator.onLine) { set({ status: 'offline', message: '' }); return; }
@@ -225,10 +231,13 @@ export async function syncNow(interactive: boolean) {
     const remote = await findVault(interactive);
     const { key, salt } = keyBundle;
     if (!remote) {
+      // we already know a vault: a missing one is more likely a listing glitch than a deletion, never silently start a new one
+      if (meta.fileId) throw new Error('Drive vault not found. Local changes are kept on this device; nothing was uploaded.');
       await push(null, key, salt, interactive);
     } else if (remote.version === meta.baseVersion) {
       if (meta.dirty) await push(remote.id, key, salt, interactive, remote.version);
-    } else if (!meta.dirty && meta.baseVersion) {
+    } else if (!meta.dirty) {
+      // Drive moved and we have nothing of our own to add: Drive's copy always wins
       const seq = writeSeq;
       const bytes = await open(await downloadVault(remote.id, interactive), key);
       if (writeSeq === seq) await adoptRemote(bytes, remote.version, remote.id);

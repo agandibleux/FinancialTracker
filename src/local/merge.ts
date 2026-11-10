@@ -3,6 +3,7 @@
  * Per row: if this device did not change it since base, Drive's version wins (including deletions); if this device changed,
  * added or deleted it, this device's version wins. Rows changed only on Drive are kept, so edits made offline on
  * two devices end up in both. Only the *same row* edited on both sides is a real conflict, and there this device (the later sync) wins.
+ * Without a base (null) Drive wins every row it has; only rows missing from Drive are taken from this device.
  */
 import type { Database } from 'sql.js';
 import { openTemp, type Row } from './db';
@@ -63,7 +64,11 @@ export async function mergeDatabases(baseBytes: Uint8Array | null, localBytes: U
       const info = out.exec(`PRAGMA table_info(${spec.table})`)[0].values.map(v => String(v[1])).filter(c => !(spec.noId && c === 'id'));
       const ins = out.prepare(`INSERT OR REPLACE INTO ${spec.table}(${info.join(',')}) VALUES (${info.map(() => '?').join(',')})`);
       for (const k of new Set([...b.keys(), ...l.keys(), ...r.keys()])) {
-        const localChanged = !same(b.get(k), l.get(k));
+        // no common base (first link of a device that already has data): we can't tell who changed what, so Drive wins
+        // wherever it has a different version of a row; rows that exist only here are kept
+        const localChanged = baseBytes
+          ? !same(b.get(k), l.get(k))
+          : !r.has(k) || (same(l.get(k), r.get(k)));
         const winner = localChanged ? l.get(k) : r.get(k);
         for (const row of winner ?? []) ins.run(info.map(c => row[c] ?? null) as any[]);
       }
