@@ -109,6 +109,17 @@ function startListeners() {
   window.addEventListener('online', () => void syncNow(false));
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { keepFresh(); void syncNow(false); } });
   window.addEventListener('pagehide', () => { if (meta.dirty) void flushLocal(); });
+  // Google gives no refresh token to browser apps and silent renewal is often blocked, so once access has lapsed renew it on the
+  // user's next tap/keypress (the only moment a popup is allowed). With the account already approved the popup closes by itself.
+  let autoTried = false;
+  const renewOnGesture = () => {
+    if (state.status !== 'auth') { autoTried = false; return; }
+    if (autoTried) return; // they dismissed it once: leave the Reconnect button to them
+    autoTried = true;
+    void syncNow(true);
+  };
+  document.addEventListener('click', renewOnGesture, true);
+  document.addEventListener('keydown', renewOnGesture, true);
   setInterval(() => { if (document.visibilityState === 'visible') { keepFresh(); void syncNow(false); } }, 60_000);
 }
 
