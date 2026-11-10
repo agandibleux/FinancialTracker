@@ -115,3 +115,28 @@ describe('yearlyStats year boundaries', () => {
     expect(r[0].returnPct).toBeCloseTo(19.11, 2);
   });
 });
+
+import { evalExpr, isExpr, isRelative } from './expr';
+describe('evalExpr', () => {
+  it('does precedence, parens, percent and unicode operators', () => {
+    expect(evalExpr('2+3*4')).toBe(14);
+    expect(evalExpr('(2+3)×4')).toBe(20);
+    expect(evalExpr('1,200 − 85.5')).toBe(1114.5);
+    expect(evalExpr('50%')).toBe(0.5);
+    expect(evalExpr('10÷4')).toBe(2.5);
+    expect(evalExpr('-3+5')).toBe(2);
+  });
+  it('rejects junk and divide-by-zero', () => {
+    expect(evalExpr('2+')).toBeNull();
+    expect(evalExpr('abc')).toBeNull();
+    expect(evalExpr('1/0')).toBeNull();
+    expect(evalExpr('')).toBeNull();
+  });
+  it('tells plain numbers from expressions', () => {
+    expect(isExpr('1234.5')).toBe(false);
+    expect(isExpr('-20')).toBe(false);
+    expect(isExpr('12+3')).toBe(true);
+    expect(isRelative('+45')).toBe(true);
+    expect(isRelative('45')).toBe(false);
+  });
+});

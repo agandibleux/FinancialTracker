@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, Calculator, Delete, TrendingDown, TrendingUp, X, type LucideIcon } from 'lucide-react';
 import { MONTHS, money } from '../lib/calc';
-import type { ToastKind } from '../lib/toast';
+import { evalExpr, isExpr, isRelative } from '../lib/expr';
+import { toast, type ToastKind } from '../lib/toast';
 
 /* ---------- motion helpers ---------- */
 /** Counts up to `value` once on mount and eases to new values after that. */
@@ -156,27 +158,129 @@ export function NumInput({ value, onChange, className = '' }: { value: number; o
 }
 
 const fmt2 = new Intl.NumberFormat('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-/** Money field: shows 1,234.50 when idle, plain digits while you type; empty shows the placeholder. */
+const r2 = (n: number) => Math.round(n * 100) / 100;
+/** What a field's text means: a plain number, or an expression (a leading + * / works on the current value). null = not valid yet. */
+const resolve = (text: string, base: number): number | null => {
+  if (!isExpr(text)) { const n = parseFloat(text.replace(/[^0-9.\-]/g, '')); return Number.isFinite(n) ? n : 0; }
+  return evalExpr(isRelative(text) ? `${base}${text}` : text);
+};
+
+/**
+ * Money field: shows 1,234.50 when idle, plain digits while you type; empty shows the placeholder.
+ * It is also a calculator: type 12.5+8*3 or, on a filled field, +45 / −20 / *2 to work on what is there,
+ * or open the keypad (calculator icon on hover or focus) to Add, Subtract or Replace.
+ */
 export function MoneyInput({ value, onChange, placeholder = '0.00', big = false }: { value: number; onChange: (n: number) => void; placeholder?: string; big?: boolean }) {
   const [text, setText] = useState<string | null>(null); // non-null while focused
+  const [open, setOpen] = useState(false);
+  const base = useRef(0);
+  const box = useRef<HTMLDivElement>(null);
   const idle = value ? fmt2.format(value) : '';
   const ph = /^-?\d+(\.\d+)?$/.test(placeholder) ? fmt2.format(Number(placeholder)) : placeholder;
+  const calc = text !== null && isExpr(text);
+  const pending = calc ? resolve(text, base.current) : null;
+  const commit = () => { if (calc && pending != null) onChange(pending); setText(null); };
   return (
-    <div className="relative">
-      <span className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 ${big ? 'text-base' : 'text-sm'}`}>$</span>
-      <input type="text" inputMode="decimal" placeholder={ph}
+    <div ref={box} className="group relative">
+      <span className={`absolute left-1 top-1/2 grid h-8 w-6 -translate-y-1/2 place-items-center ${big ? 'text-base' : 'text-sm'}`}>
+        <span className={`pointer-events-none text-slate-400 ${open ? 'hidden' : 'group-focus-within:hidden group-hover:hidden'}`}>$</span>
+        <button type="button" tabIndex={-1} aria-label="Open calculator" title="Calculator: add to, subtract from or replace this amount"
+          onMouseDown={e => e.preventDefault()} onClick={e => { e.preventDefault(); base.current = value; setOpen(o => !o); }}
+          className={`h-6 w-6 place-items-center rounded-lg text-indigo-500 transition hover:bg-indigo-50 hover:text-indigo-700 ${open ? 'grid bg-indigo-50' : 'hidden group-focus-within:grid group-hover:grid'}`}><Calculator size={14} /></button>
+      </span>
+      <input type="text" inputMode="text" placeholder={ph} enterKeyHint="next"
         className={`${inputCls} tabular pl-7 text-right ${big ? '!text-base font-semibold' : ''}`}
         value={text ?? idle}
-        onFocus={e => { setText(value ? String(value) : ''); requestAnimationFrame(() => e.target.select()); }}
-        onBlur={() => setText(null)}
+        onFocus={e => { base.current = value; setText(value ? String(value) : ''); requestAnimationFrame(() => e.target.select()); }}
+        onBlur={commit}
+        onKeyDown={e => { if (e.key === 'Enter') commit(); }}
         onChange={e => {
-          const raw = e.target.value.replace(/[^0-9.\-]/g, '');
+          const raw = e.target.value.replace(/x/gi, '×').replace(/[^0-9.+\-*/×÷()%−–]/g, '');
           setText(raw);
-          const n = parseFloat(raw);
-          onChange(Number.isFinite(n) ? n : 0);
+          if (!isExpr(raw)) onChange(resolve(raw, base.current) ?? 0);
         }} />
+      {calc && (
+        <span className="tabular pointer-events-none absolute right-0 top-full z-30 mt-1 flex animate-rise items-center gap-1.5 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-xs font-medium text-white shadow-xl">
+          {pending == null ? <span className="text-slate-400">keep typing…</span> : <>
+            {isRelative(text!) && <span className="text-slate-400">{money(base.current)}</span>}<span className="text-slate-300">=</span><b className="text-emerald-300">{money(pending)}</b><span className="text-slate-400">· Enter</span></>}
+        </span>
+      )}
+      {open && box.current && <CalcPopover anchor={box.current} base={value}
+        onClose={() => setOpen(false)}
+        onApply={(v, msg) => { onChange(v); setOpen(false); toast(msg); }} />}
     </div>
   );
+}
+
+const KEYS = ['C', '(', ')', '÷', '7', '8', '9', '×', '4', '5', '6', '−', '1', '2', '3', '+', '0', '.', '%', '⌫'];
+const MODES = [{ id: 'add', label: 'Add' }, { id: 'sub', label: 'Subtract' }, { id: 'set', label: 'Replace' }] as const;
+
+/** Calculator for one field: build an amount, then add it to, subtract it from, or replace what the field holds. */
+function CalcPopover({ anchor, base, onApply, onClose }: { anchor: HTMLElement; base: number; onApply: (v: number, msg: string) => void; onClose: () => void }) {
+  const [expr, setExpr] = useState('');
+  const [mode, setMode] = useState<(typeof MODES)[number]['id']>(base ? 'add' : 'set');
+  const panel = useRef<HTMLDivElement>(null);
+  const field = useRef<HTMLInputElement>(null);
+  const small = window.innerWidth < 640;
+  const amount = evalExpr(expr);
+  const result = amount == null ? null : r2(mode === 'add' ? base + amount : mode === 'sub' ? base - amount : amount);
+  const apply = () => {
+    if (amount == null || result == null) return;
+    onApply(result, mode === 'add' ? `Added ${money(amount)} → ${money(result)}` : mode === 'sub' ? `Subtracted ${money(amount)} → ${money(result)}` : `Set to ${money(result)}`);
+  };
+  useEffect(() => {
+    if (!small) field.current?.focus();
+    const down = (e: globalThis.MouseEvent) => { const t = e.target as Node; if (!panel.current?.contains(t) && !anchor.contains(t)) onClose(); };
+    const key = (e: globalThis.KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('mousedown', down); document.addEventListener('keydown', key);
+    return () => { document.removeEventListener('mousedown', down); document.removeEventListener('keydown', key); };
+  }, []);
+  const press = (k: string) => {
+    setExpr(e => k === 'C' ? '' : k === '⌫' ? e.slice(0, -1) : e + k);
+    if (!small) field.current?.focus();
+  };
+  const W = 304, H = 440, r = anchor.getBoundingClientRect();
+  const pos: React.CSSProperties = small ? {} : {
+    width: W, left: Math.max(8, Math.min(r.right - W, window.innerWidth - W - 8)),
+    ...(r.bottom + 8 + H > window.innerHeight && r.top > H ? { bottom: window.innerHeight - r.top + 8 } : { top: Math.min(r.bottom + 8, Math.max(8, window.innerHeight - H - 8)) }),
+  };
+  const mathBtn = (k: string) => ['÷', '×', '−', '+'].includes(k)
+    ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100' : k === 'C' ? 'bg-rose-50 text-rose-600 hover:bg-rose-100' : ['(', ')', '%', '⌫'].includes(k) ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-white text-slate-900 ring-1 ring-slate-200 hover:bg-slate-50';
+  return createPortal(
+    <div onKeyDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
+      {small && <div className="fixed inset-0 z-[70] bg-slate-900/40 backdrop-blur-[2px]" />}
+      <div ref={panel} role="dialog" aria-label="Calculator" style={pos}
+        className={`fixed z-[71] animate-rise border border-slate-200 bg-white p-4 shadow-[0_24px_60px_-12px_rgba(15,23,42,.35)] ${small ? 'inset-x-0 bottom-0 rounded-t-3xl pb-[max(1rem,env(safe-area-inset-bottom))]' : 'rounded-3xl'}`}>
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-semibold text-slate-900">Calculator</p>
+          <button type="button" onClick={onClose} aria-label="Close" className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X size={15} /></button>
+        </div>
+        {base !== 0 && (
+          <div className="mb-3">
+            <div className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">
+              {MODES.map(m => <button key={m.id} type="button" onClick={() => setMode(m.id)}
+                className={`rounded-lg py-1.5 text-xs font-semibold transition ${mode === m.id ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>{m.label}</button>)}
+            </div>
+            <p className="tabular mt-1.5 text-center text-xs text-slate-400">Field holds <b className="text-slate-600">{money(base)}</b></p>
+          </div>
+        )}
+        <div className="rounded-2xl bg-slate-50 px-4 py-3 text-right ring-1 ring-slate-200/70 focus-within:ring-indigo-300">
+          <input ref={field} value={expr} placeholder="0" aria-label="Expression" inputMode={small ? 'none' : 'text'} autoComplete="off"
+            onChange={e => setExpr(e.target.value.replace(/x/gi, '×').replace(/[^0-9.+\-*/×÷()%−–]/g, ''))}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); apply(); } }}
+            className="tabular w-full bg-transparent text-right text-xl font-medium text-slate-700 outline-none placeholder:text-slate-300" />
+          <p className={`tabular mt-1 text-3xl font-bold tracking-tight ${result == null ? 'text-slate-300' : result < 0 ? 'text-rose-600' : 'text-slate-900'}`}>{result == null ? (expr ? '…' : money(base)) : money(result)}</p>
+          {result != null && base !== 0 && mode !== 'set' && <p className="tabular text-xs text-slate-400">{money(base)} {mode === 'add' ? '+' : '−'} {money(amount!)}</p>}
+        </div>
+        <div className="mt-3 grid grid-cols-4 gap-1.5">
+          {KEYS.map(k => <button key={k} type="button" onClick={() => press(k)} aria-label={k === '⌫' ? 'Backspace' : k}
+            className={`tabular grid h-11 place-items-center rounded-xl text-lg font-semibold transition active:scale-95 ${mathBtn(k)}`}>{k === '⌫' ? <Delete size={18} /> : k}</button>)}
+        </div>
+        <button type="button" className={`${btnCls} mt-3 w-full !py-3`} disabled={result == null} onClick={apply}>
+          {result == null ? 'Enter an amount' : mode === 'add' ? `Add ${money(amount!)}` : mode === 'sub' ? `Subtract ${money(amount!)}` : `Set to ${money(result)}`}
+        </button>
+      </div>
+    </div>, document.body);
 }
 
 export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { id: T; label: string; icon?: LucideIcon }[]; value: T; onChange: (t: T) => void }) {
