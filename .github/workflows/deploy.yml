@@ -31,3 +31,14 @@ jobs:
     steps:
       - id: d
         uses: actions/deploy-pages@v4
+  # GitHub's cron trigger is unreliable (often silently skipped), so after every deploy wait ~29 min and dispatch the next one.
+  # A newer chain job cancels an older sleeping one, so only one chain is ever alive. The cron above is just a backup restart.
+  next:
+    needs: [build, deploy]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions: { actions: write }
+    concurrency: { group: price-chain, cancel-in-progress: true }
+    steps:
+      - run: sleep 1740 && gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref main
+        env: { GH_TOKEN: "${{ github.token }}" }
