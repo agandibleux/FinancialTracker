@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { ClipboardPaste, ExternalLink, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { ClipboardPaste, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAccountHistory, useAccounts, useDelete, useDeposits, useHoldingHistory, useHoldings, usePeople, useSave } from '../api';
 import { apiFetch } from '../local/routes';
@@ -9,9 +9,9 @@ import { CLS, GEO, enrich, exposure, groupBy, parsePasted, yearlyStats, type Row
 import type { Holding } from '../lib/types';
 import { toast } from '../lib/toast';
 import { SOURCES, googleUrl, yahooUrl } from '../lib/source';
+import { Positions, type Sort } from '../components/Positions';
 import { Badge, COLORS, Card, ChartTooltip, CrossTable, EmptyState, GRID, Kpi, PageHeader, Tabs, btnCls, btnGhost, inputCls } from '../components/ui';
 
-type SortKey = keyof Row;
 /** Known totals invested per year, keyed by account id: the Non-registered ETF account's 2025 (opened with $0, $29,050 put in, ended at $34,601.28). */
 const SEED_DEPOSITS: Record<string, Record<number, number>> = { '1': { 2025: 29050 } };
 const pct = (n: number, d = 2) => `${n >= 0 ? '+' : ''}${n.toFixed(d)}%`;
@@ -111,7 +111,7 @@ export default function Portfolio() {
   const save = useSave<Holding[]>('PUT', '/api/holdings');
   const del = useDelete(id => `/api/holdings/${id}`);
   const [sel, setSel] = useState<number | null>(null);
-  const [sort, setSort] = useState<{ k: SortKey; dir: 1 | -1 }>({ k: 'value', dir: -1 });
+  const [sort, setSort] = useState<Sort>({ k: 'value', dir: -1 });
   const [tab, setTab] = useState<'positions' | 'yearly' | 'edit'>('positions');
   const [allAccts, setAllAccts] = useState(false);
   const snaps = useHoldingHistory().data ?? [];
@@ -159,10 +159,6 @@ export default function Portfolio() {
     } catch { if (!silent) toast('Could not fetch prices (offline?)', 'error'); }
     setBusy(false);
   };
-  const th = (k: SortKey, label: string, left = false) => (
-    <th className={`cursor-pointer select-none px-3 py-2 ${left ? 'text-left' : 'text-right'} text-xs font-semibold uppercase tracking-wide text-slate-500`}
-      onClick={() => setSort(s => ({ k, dir: s.k === k ? (-s.dir as 1 | -1) : -1 }))}>{label}{sort.k === k ? (sort.dir < 0 ? ' ↓' : ' ↑') : ''}</th>
-  );
   const owner = (pid: number) => people.find(p => p.id === pid)?.name ?? '';
 
   if (!accounts.length) return <EmptyState title="No investment accounts" text="Add a TFSA / RRSP / FHSA / non-registered account in Settings first." />;
@@ -229,50 +225,8 @@ export default function Portfolio() {
             <YearlyView stats={yearly} allAccts={allAccts} setAllAccts={setAllAccts} deposits={scopeDeposits} setDeposit={setDeposit} />
           ) : tab === 'positions' ? (
             <>
-              <Card pad={false} title="Positions" subtitle="Click a header to sort. Drift = current weight − your ideal %.">
-                <CrossTable className="overflow-x-auto pb-4">
-                  <table className="w-full text-sm">
-                    <thead><tr className="border-b border-slate-200">
-                      {th('ticker', 'ETF', true)}{th('sector', 'Sector', true)}{th('shares', 'Shares')}{th('avg_price', 'Avg')}{th('price', 'Price')}
-                      {th('dayPct', 'Day %')}{th('dayChange', 'Day $')}{th('value', 'Value')}{th('gain', 'Profit $')}{th('gainPct', 'Profit %')}
-                      {th('weight', 'Weight')}{th('target_pct', 'Ideal')}{th('drift', 'Drift')}{th('yield_pct', 'Yield')}{th('expense_ratio', 'MER')}
-                    </tr></thead>
-                    <tbody className="tabular">
-                      {sorted.map(r => (
-                        <tr key={r.id} className="border-b border-slate-100">
-                          <td className="px-3 py-2 font-semibold" title={r.info}>{r.ticker}
-                            <div className="whitespace-nowrap text-[11px] font-normal leading-tight text-slate-400">
-                              {r.yahoo_symbol ? (<>
-                                <a className="hover:text-indigo-700 hover:underline" href={yahooUrl(r.yahoo_symbol)} target="_blank" rel="noreferrer" title={`Yahoo Finance · ${r.price_date || 'not refreshed yet'}`}>Yahoo · {r.yahoo_symbol}</a>
-                                <a className="ml-1.5 inline-block align-middle hover:text-indigo-700" href={googleUrl(r.yahoo_symbol)} target="_blank" rel="noreferrer" title="Open in Google Finance"><ExternalLink size={10} /></a>
-                              </>) : 'Manual price'}
-                            </div></td>
-                          <td className="px-3 py-2 text-slate-500">{r.sector}</td>
-                          <td className="px-3 py-2 text-right">{r.shares}</td>
-                          <td className="px-3 py-2 text-right">{r.avg_price.toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right">{r.price.toFixed(2)}</td>
-                          <td className={`px-3 py-2 text-right ${tone(r.dayPct)}`}>{r.prev_close ? pct(r.dayPct) : '–'}</td>
-                          <td className={`px-3 py-2 text-right ${tone(r.dayChange)}`}>{r.prev_close ? money(r.dayChange) : '–'}</td>
-                          <td className="px-3 py-2 text-right font-medium">{money(r.value)}</td>
-                          <td className={`px-3 py-2 text-right ${tone(r.gain)}`}>{money(r.gain)}</td>
-                          <td className={`px-3 py-2 text-right ${tone(r.gainPct)}`}>{pct(r.gainPct)}</td>
-                          <td className="px-3 py-2 text-right">{r.weight.toFixed(1)}%</td>
-                          <td className="px-3 py-2 text-right text-slate-500">{r.target_pct ? `${r.target_pct}%` : '–'}</td>
-                          <td className="px-3 py-2 text-right">{r.target_pct || r.weight ? <Badge tone={Math.abs(r.drift) < 2 ? 'green' : r.drift > 0 ? 'amber' : 'blue'}>{pct(r.drift)}</Badge> : '–'}</td>
-                          <td className="px-3 py-2 text-right">{r.yield_pct.toFixed(2)}%</td>
-                        </tr>
-                      ))}
-                      <tr className="font-bold">
-                        <td className="px-3 py-2" colSpan={6}>Total</td>
-                        <td className={`px-3 py-2 text-right ${tone(day)}`}>{money(day)}</td>
-                        <td className="px-3 py-2 text-right">{money(value)}</td>
-                        <td className={`px-3 py-2 text-right ${tone(value - cost)}`}>{money(value - cost)}</td>
-                        <td className={`px-3 py-2 text-right ${tone(value - cost)}`}>{cost ? pct(((value - cost) / cost) * 100) : ''}</td>
-                        <td className="px-3 py-2 text-right">100%</td><td colSpan={4} />
-                      </tr>
-                    </tbody>
-                  </table>
-                </CrossTable>
+              <Card title="Positions" subtitle="The bar shows each holding's share of the portfolio; the dark marker is your ideal %.">
+                <Positions rows={sorted} sort={sort} setSort={setSort} totals={{ value, cost, day }} />
               </Card>
 
               <div className="grid gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-4">

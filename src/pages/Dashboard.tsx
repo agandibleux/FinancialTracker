@@ -83,6 +83,7 @@ export default function Dashboard() {
       {/* HERO: what did I save, and where did each dollar of income go */}
       <div className="grid gap-4 sm:gap-6 xl:grid-cols-12">
         <section className="hero-ink cq overflow-hidden rounded-3xl p-5 sm:p-8 xl:col-span-8">
+          <i className="hero-grain" aria-hidden />
           <p className="text-sm font-medium text-indigo-100">{MONTHS[cur.month - 1]} {cur.year} · {cur.actual == null ? 'predicted so far' : 'final'}</p>
           <div className="mt-2 flex items-center justify-between gap-4 sm:gap-6">
             <div className="min-w-0">

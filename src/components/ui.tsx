@@ -60,7 +60,7 @@ export function HeroRing({ pct, size = 132, stroke = 12, className = '', childre
 /* ---------- layout ---------- */
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-4">
+    <div className="page-head flex flex-wrap items-end justify-between gap-3 sm:gap-4">
       <div className="min-w-0">
         <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.025em] text-slate-900 sm:text-[32px] ">{title}</h1>
         {subtitle && <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-slate-500 sm:text-[15px]">{subtitle}</p>}
@@ -181,7 +181,7 @@ export function MoneyInput({ value, onChange, placeholder = '0.00', big = false 
 
 export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { id: T; label: string; icon?: LucideIcon }[]; value: T; onChange: (t: T) => void }) {
   return (
-    <div className="-mx-1 max-w-[calc(100%+0.5rem)] min-w-0 overflow-x-auto px-1"><div className="inline-flex gap-1 rounded-2xl bg-slate-200/60 p-1">
+    <div className="fade-x -mx-1 max-w-[calc(100%+0.5rem)] min-w-0 overflow-x-auto px-1"><div className="inline-flex gap-1 rounded-2xl bg-slate-200/60 p-1">
       {tabs.map(t => (
         <button key={t.id} onClick={() => onChange(t.id)}
           className={`inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2 text-sm font-medium transition ${value === t.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
@@ -198,10 +198,10 @@ export function MonthNav({ year, month, onChange, months }: {
   const step = (d: number) => { const t = year * 12 + (month - 1) + d; onChange(Math.floor(t / 12), (t % 12) + 1); };
   const btn = 'grid h-10 w-10 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900';
   return (
-    <div className="inline-flex items-center gap-1 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+    <div className="month-nav inline-flex items-center gap-1 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
       <button className={btn} onClick={() => step(-1)} aria-label="Previous month"><ChevronLeft size={18} /></button>
       {months ? (
-        <select className="cursor-pointer rounded-xl bg-transparent py-2 pl-3 text-sm font-semibold text-slate-900 outline-none" value={`${year}-${month}`}
+        <select className="min-w-0 flex-1 cursor-pointer rounded-xl bg-transparent py-2 pl-3 text-center text-sm font-semibold text-slate-900 outline-none" value={`${year}-${month}`}
           onChange={e => { const [y, m] = e.target.value.split('-').map(Number); onChange(y, m); }}>
           {[...months].reverse().map(m => <option key={`${m.year}-${m.month}`} value={`${m.year}-${m.month}`}>{MONTHS[m.month - 1]} {m.year}</option>)}
         </select>
@@ -233,7 +233,27 @@ export function CrossTable({ children, className = '' }: { children: ReactNode; 
       if (c && r.cells.length === full) { c.classList.add('hl-col'); marked.current.push(c); }
     }
   };
-  return <div className={`xt ${className}`} onMouseOver={onOver} onMouseLeave={clear}>{children}</div>;
+  // phones: wide tables become one card per row; each value is labelled from its column header (see .xt.stack in index.css)
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = box.current; if (!el) return;
+    const label = () => {
+      const table = el.querySelector('table'), head = table?.tHead?.rows[0];
+      if (!table || !head) return;
+      const cols: string[] = [];
+      for (const h of Array.from(head.cells)) for (let i = 0; i < h.colSpan; i++) cols.push(i === 0 ? (h.textContent ?? '').trim() : '');
+      el.classList.toggle('stack', cols.length >= 5);
+      for (const row of Array.from(table.tBodies[0]?.rows ?? [])) {
+        const whole = row.cells.length === cols.length; // total/spanning rows keep no labels
+        Array.from(row.cells).forEach((c, i) => { const t = whole ? cols[i] : ''; if (t && i > 0) c.setAttribute('data-label', t); else c.removeAttribute('data-label'); });
+      }
+    };
+    label();
+    const mo = new MutationObserver(label);
+    mo.observe(el, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  }, []);
+  return <div ref={box} className={`xt ${className}`} onMouseOver={onOver} onMouseLeave={clear}>{children}</div>;
 }
 
 /** Circular progress ring with centered content. */

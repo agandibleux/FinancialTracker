@@ -56,7 +56,7 @@ export default function App() {
   const { pathname } = useLocation();
   useEffect(() => { setMore(false); window.scrollTo(0, 0); }, [pathname]);
   const inTabs = TABS.some(([to]) => (to === '/' ? pathname === '/' : pathname.startsWith(to)));
-  const tab = (active: boolean) => `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-1.5 text-[11px] font-semibold transition ${active ? 'text-indigo-700' : 'text-slate-500'}`;
+  const tab = (active: boolean) => `tab-item isolate flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-1.5 text-[11px] font-semibold transition ${active ? 'text-indigo-700' : 'text-slate-500'}`;
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-[100rem] md:gap-4 md:p-4 lg:gap-6 lg:p-6">
@@ -131,11 +131,11 @@ export default function App() {
       </div>
       <nav className="pb-safe fixed inset-x-3 bottom-3 z-50 flex items-stretch rounded-3xl border border-slate-200/80 bg-white/90 px-2 pt-1.5 shadow-[0_12px_32px_-8px_rgba(14,26,46,0.35)] backdrop-blur-xl md:hidden" style={{ bottom: 'calc(env(safe-area-inset-bottom,0px) + .75rem)', paddingBottom: '.375rem' }}>
         {TABS.map(([to, label, Icon]) => (
-          <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => tab(isActive && !more)}>
+          <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => tab(isActive && !more)} data-active={(to === '/' ? pathname === '/' : pathname.startsWith(to)) && !more}>
             <Icon size={21} />{label}
           </NavLink>
         ))}
-        <button onClick={() => setMore(m => !m)} className={tab(more || !inTabs)}><Menu size={21} />More</button>
+        <button onClick={() => setMore(m => !m)} data-active={more || !inTabs} className={tab(more || !inTabs)}><Menu size={21} />More</button>
       </nav>
     </div>
   );

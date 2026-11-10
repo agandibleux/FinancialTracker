@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, ChevronDown, Download, Minus } from 'lucide-react';
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAccountHistory, useAccounts, usePeople } from '../api';
 import { accountHistoryCsv } from '../local/routes';
 import { downloadBlob } from '../local/download';
 import { money, sum } from '../lib/calc';
 import { ACCOUNT_META, ACCOUNT_TYPES, isInvested, type AccountType } from '../lib/types';
-import { COLORS, Card, ChartTooltip, Kpi, PageHeader, btnGhost, GRID } from '../components/ui';
+import { COLORS, Card, ChartTooltip, Kpi, PageHeader, btnGhost } from '../components/ui';
 
 
 export default function Accounts() {
@@ -49,23 +49,93 @@ export default function Accounts() {
       </div>
 
       <div className="grid gap-4 sm:gap-6 xl:grid-cols-3">
-        <Card title="Net worth over time" subtitle="One band per account, from the daily snapshots" className="xl:col-span-2">
-          {series.length < 2 ? <p className="text-sm text-slate-500">History started {dates[0] ?? 'today'}. Each day the app is open adds a point here.</p> : (
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={series}>
-                <CartesianGrid stroke={GRID} vertical={false} />
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} minTickGap={40} /><YAxis stroke="#94a3b8" fontSize={11} tickFormatter={v => `$${v / 1000}k`} />
-                <Tooltip content={<ChartTooltip />} /><Legend />
-                {accounts.map((a, i) => <Area key={a.id} dataKey={label(a)} stackId="1" stroke={COLORS[i % COLORS.length]} fill={COLORS[i % COLORS.length]} fillOpacity={0.3} isAnimationActive={false} />)}
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </Card>
+        <NetWorthChart series={series} accounts={accounts} label={label} />
         <AllocationToday byType={byType} total={total} />
       </div>
 
       <DailyHistory series={series} accounts={accounts} label={label} />
     </div>
+  );
+}
+
+/* ---------------- Net worth over time: one clean line, scrub to read any day ---------------- */
+const GROUP_COLOR = { Cash: '#38bdf8', Investing: '#6366f1', Home: '#f59e0b' } as const;
+const short = (v: number) => (Math.abs(v) >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${Math.round(v / 1000)}k`);
+
+function NetWorthChart({ series, accounts, label }: { series: Row[]; accounts: { id: number; type: AccountType }[]; label: (a: any) => string }) {
+  const [range, setRange] = useState<(typeof RANGES)[number][0]>('90D');
+  const [hi, setHi] = useState<number | null>(null);
+  const n = RANGES.find(r => r[0] === range)![1];
+  const view = useMemo(() => series.slice(-n).map(r => ({ date: r.name as string, total: r.total as number, row: r })), [series, n]);
+
+  if (series.length < 2) return (
+    <Card title="Net worth over time" className="xl:col-span-2">
+      <p className="text-sm text-slate-500">History started {(series[0]?.name as string) ?? 'today'}. Each day the app is open adds a point here.</p>
+    </Card>
+  );
+
+  const idx = hi != null && view[hi] ? hi : view.length - 1;
+  const cur = view[idx], first = view[0];
+  const change = cur.total - first.total, pct = first.total ? (change / first.total) * 100 : 0;
+  const lo = Math.min(...view.map(v => v.total)), top = Math.max(...view.map(v => v.total));
+  const pad = Math.max((top - lo) * 0.15, top * 0.002);
+  const groups = (['Cash', 'Investing', 'Home'] as const)
+    .map(g => ({ g, v: accounts.filter(a => ACCOUNT_META[a.type].group === g).reduce((t, a) => t + (Number(cur.row[label(a)]) || 0), 0) }))
+    .filter(x => x.v > 0);
+
+  return (
+    <Card title="Net worth over time" subtitle="Touch or hover the chart to read any day" className="xl:col-span-2">
+      <div className="space-y-4">
+        <div className="inline-flex gap-1 rounded-2xl bg-slate-200/60 p-1">
+          {RANGES.map(([id]) => (
+            <button key={id} onClick={() => { setRange(id); setHi(null); }}
+              className={`rounded-xl px-3.5 py-2 text-sm font-medium transition sm:px-4 ${range === id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>{id}</button>
+          ))}
+        </div>
+
+        <div>
+          <p className="text-xs font-medium text-slate-500">{parse(cur.date).toLocaleDateString('en-CA', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</p>
+          <p className="display tabular num-hero mt-0.5 text-slate-900">{money(cur.total)}</p>
+          <span className={`tabular mt-1.5 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-semibold ${change >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+            {change >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}{signed(change)} · {Math.abs(pct).toFixed(1)}%
+            <span className="font-normal text-slate-500">since {parse(first.date).toLocaleDateString('en-CA', { day: 'numeric', month: 'short' })}</span>
+          </span>
+        </div>
+
+        <div className="-mx-2 h-56 touch-pan-y select-none sm:mx-0 sm:h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={view} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}
+              onMouseMove={(s: any) => { const i = Number(s?.activeIndex); if (Number.isFinite(i)) setHi(i); }}
+              onMouseLeave={() => setHi(null)}
+              onTouchMove={(s: any) => { const i = Number(s?.activeIndex); if (Number.isFinite(i)) setHi(i); }}
+              onTouchEnd={() => setHi(null)}>
+              <defs><linearGradient id="nw" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#6366f1" stopOpacity={0.35} /><stop offset="100%" stopColor="#6366f1" stopOpacity={0} /></linearGradient></defs>
+              <XAxis dataKey="date" hide />
+              <YAxis hide domain={[Math.floor(lo - pad), Math.ceil(top + pad)]} />
+              <Tooltip content={() => null} cursor={{ stroke: '#6366f1', strokeWidth: 1.5, strokeDasharray: '4 4' }} />
+              <Area type="monotone" dataKey="total" stroke="#6366f1" strokeWidth={3} fill="url(#nw)" dot={false} activeDot={{ r: 6, strokeWidth: 3, stroke: '#fff', fill: '#6366f1' }} isAnimationActive={false} />
+            </AreaChart>
+          </ResponsiveContainer>
+          <div className="tabular -mt-1 flex justify-between px-2 text-[11px] text-slate-400 sm:px-0">
+            <span>{parse(first.date).toLocaleDateString('en-CA', { day: 'numeric', month: 'short' })} · low {short(lo)}</span>
+            <span>high {short(top)}</span>
+          </div>
+        </div>
+
+        {/* where it sits on the selected day */}
+        <div className="space-y-2.5 border-t border-slate-100 pt-4">
+          {groups.map(({ g, v }) => (
+            <div key={g}>
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="flex items-center gap-2 font-medium text-slate-700"><i className="h-2.5 w-2.5 rounded-full" style={{ background: GROUP_COLOR[g] }} />{g}</span>
+                <span className="tabular whitespace-nowrap font-semibold text-slate-900">{money(v)} <span className="text-xs font-normal text-slate-400">{cur.total ? Math.round((v / cur.total) * 100) : 0}%</span></span>
+              </div>
+              <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full" style={{ width: `${cur.total ? (v / cur.total) * 100 : 0}%`, background: GROUP_COLOR[g] }} /></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Card>
   );
 }
 
