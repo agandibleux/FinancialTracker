@@ -7,22 +7,39 @@ import { getConfig } from './config';
  */
 export class NoProxyError extends Error { constructor() { super('No price data available (prices.json missing and no quote proxy set)'); } }
 
-let snapshot: Promise<Record<string, any>> | null = null, snapshotAt = 0;
+interface Snapshot { generatedAt?: string; data: Record<string, any> }
+let snapshot: Promise<Snapshot> | null = null, snapshotAt = 0;
+/** Forget the cached snapshot so the next read goes back to the network (the Refresh buttons call this). */
+export const resetSnapshot = () => { snapshot = null; };
 function loadSnapshot() {
   if (!snapshot || Date.now() - snapshotAt > 60_000) {
     snapshotAt = Date.now();
-    snapshot = fetch(`${import.meta.env.BASE_URL}prices.json`, { cache: 'no-cache' })
+    snapshot = fetch(`${import.meta.env.BASE_URL}prices.json?t=${Date.now()}`, { cache: 'reload' })
       .then(r => { if (!r.ok) throw new NoProxyError(); return r.json(); })
-      .then(j => j.data ?? {})
+      .then((j): Snapshot => ({ generatedAt: j.generatedAt, data: j.data ?? {} }))
       .catch(() => { snapshot = null; throw new NoProxyError(); });
   }
   return snapshot;
 }
 
+/** Where prices currently come from, for the Settings → Price source card. */
+export interface PriceSourceInfo { source: 'proxy' | 'snapshot'; location: string; generatedAt?: string; latestQuote?: string; error?: string }
+export async function priceSourceInfo(): Promise<PriceSourceInfo> {
+  const proxy = getConfig().quoteProxy.trim();
+  if (proxy) return { source: 'proxy', location: proxy };
+  const location = new URL(`${import.meta.env.BASE_URL}prices.json`, document.baseURI).href;
+  try {
+    const { generatedAt, data } = await loadSnapshot();
+    let latest = 0;
+    for (const [u, v] of Object.entries(data)) if (u.includes('range=5d')) latest = Math.max(latest, v?.chart?.result?.[0]?.meta?.regularMarketTime ?? 0);
+    return { source: 'snapshot', location, generatedAt, latestQuote: latest ? new Date(latest * 1000).toISOString() : undefined };
+  } catch { return { source: 'snapshot', location, error: 'prices.json could not be loaded' }; }
+}
+
 async function fetchJson(url: string): Promise<any> {
   const proxy = getConfig().quoteProxy.trim();
   if (!proxy) {
-    const hit = (await loadSnapshot())[url];
+    const hit = (await loadSnapshot()).data[url];
     if (!hit) throw new Error('not in price snapshot');
     return hit;
   }

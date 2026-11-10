@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 on:
   push: { branches: [main] }
   workflow_dispatch:
-  schedule: [{ cron: '*/30 12-23 * * 1-5' }, { cron: '15 3 * * 2-6' }] # fresh prices: every 30 min on market days (UTC), plus a close-out
+  schedule: [{ cron: '7,37 12-23 * * 1-5' }, { cron: '23 3 * * 2-6' }] # fresh prices: every 30 min on market days (UTC), plus a close-out
 permissions: { contents: read }
 concurrency: { group: pages, cancel-in-progress: true }
 jobs:

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Cloud, CloudOff, Copy, FileUp, Lock, LockKeyhole, RefreshCw, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { getConfig, makeSetupLink, setConfig } from '../local/config';
+import { priceSourceInfo, resetSnapshot, type PriceSourceInfo } from '../local/quotes';
 import { disableLock, enableLock, lockEnabled, unlockApp } from '../local/lock';
 import { downloadBlob } from '../local/download';
 import { preloadGis } from '../local/drive';
@@ -106,6 +107,36 @@ function DeviceLock() {
 }
 
 /** Settings: hand the (public) configuration to another device without retyping anything. */
+const stamp = (iso?: string) => {
+  if (!iso) return 'unknown';
+  const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  return `${new Date(iso).toLocaleString()} (${m < 1 ? 'just now' : m < 90 ? `${m} min ago` : m < 2880 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`})`;
+};
+export function PriceSourceCard() {
+  const [info, setInfo] = useState<PriceSourceInfo | null>(null);
+  const [busy, setBusy] = useState(false);
+  const check = async () => { setBusy(true); resetSnapshot(); setInfo(await priceSourceInfo()); setBusy(false); };
+  useEffect(() => { void check(); }, []);
+  const runs = 'https://github.com/agandibleux/FinancialTracker/actions/workflows/deploy.yml';
+  const row = (k: string, v: ReactNode) => <div className="flex flex-wrap gap-x-3 text-sm"><dt className="w-40 text-slate-500">{k}</dt><dd className="min-w-0 break-all text-slate-800">{v}</dd></div>;
+  return (
+    <Card title="Price source" subtitle="Where ETF and fund prices come from, and how fresh they are.">
+      {!info ? <p className="text-sm text-slate-500">Checking…</p> : (
+        <dl className="space-y-1.5">
+          {row('Source', info.source === 'proxy' ? 'Live quote proxy (Yahoo / Morningstar)' : 'Published snapshot (prices.json, Yahoo / Morningstar)')}
+          {row('Location', <a className="text-sky-700 underline" href={info.location} target="_blank" rel="noreferrer">{info.location}</a>)}
+          {info.source === 'snapshot' && (info.error ? row('Status', <span className="text-rose-700">{info.error}</span>) : <>
+            {row('Snapshot built', stamp(info.generatedAt))}
+            {row('Latest market quote', stamp(info.latestQuote))}
+          </>)}
+          {info.source === 'snapshot' && row('Updates', <>scheduled deploy every ~30 min on weekdays · <a className="text-sky-700 underline" href={runs} target="_blank" rel="noreferrer">see runs</a></>)}
+        </dl>
+      )}
+      <div className="mt-3"><button className={btnGhost} disabled={busy} onClick={check}><RefreshCw size={16} className={busy ? 'animate-spin' : ''} />Check for newer prices</button></div>
+    </Card>
+  );
+}
+
 function SetupLinkCard() {
   const cfg = getConfig();
   if (!cfg.googleClientId) return null;
@@ -308,6 +339,8 @@ export function SyncPanel() {
       </Card>
 
       {s.linked && <SetupLinkCard />}
+
+      <PriceSourceCard />
 
       <Card title="This device" subtitle="Your data is stored in this browser. Make sure to keep a copy you control.">
         <div className="mb-5 border-b border-slate-100 pb-5"><DeviceLock /></div>

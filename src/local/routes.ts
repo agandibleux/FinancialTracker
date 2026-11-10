@@ -3,7 +3,7 @@
  * `apiFetch` mimics `fetch('/api/...')` so the pages and hooks stay unchanged.
  */
 import { all, get, getSettings, monthId, newId, notifyWrite, run, tx, type Row } from './db';
-import { NoProxyError, chart, quote, yahooSymbol } from './quotes';
+import { NoProxyError, chart, quote, resetSnapshot, yahooSymbol } from './quotes';
 
 type Ctx = { p: string[]; q: URLSearchParams; body: any };
 type Handler = (c: Ctx) => unknown | Promise<unknown>;
@@ -58,6 +58,7 @@ export function snapshotAccounts(date?: string) {
 }
 
 export async function refreshPrices() {
+  resetSnapshot();
   const rows = all('SELECT id, ticker, quote_symbol FROM holding WHERE shares > 0 OR price = 0');
   const date = today();
   const failed: string[] = [];

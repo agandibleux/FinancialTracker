@@ -4,6 +4,7 @@ import { ClipboardPaste, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAccountHistory, useAccounts, useDelete, useDeposits, useHoldingHistory, useHoldings, usePeople, useSave } from '../api';
 import { apiFetch } from '../local/routes';
+import { priceSourceInfo } from '../local/quotes';
 import { money, sum } from '../lib/calc';
 import { CLS, GEO, enrich, exposure, groupBy, parsePasted, yearlyStats, type Row, type YearStat } from '../lib/portfolio';
 import type { Holding } from '../lib/types';
@@ -155,7 +156,11 @@ export default function Portfolio() {
       const res = await (await apiFetch('/api/holdings/refresh', { method: 'POST' })).json();
       qc.invalidateQueries();
       if (res.noProxy) { if (!silent) toast('Price data isn’t available yet (it’s published with the site)', 'error'); }
-      else if (!silent) toast(res.failed?.length ? `Updated ${res.updated}; no quote for ${res.failed.join(', ')} (set the Yahoo symbol in Edit)` : `Updated ${res.updated} prices`, res.failed?.length ? 'error' : 'success');
+      else if (!silent) {
+        const info = await priceSourceInfo(), t = info.latestQuote ?? info.generatedAt;
+        const src = info.source === 'proxy' ? 'live' : `snapshot built ${info.generatedAt ? new Date(info.generatedAt).toLocaleString() : '?'}${t && t !== info.generatedAt ? `, last quote ${new Date(t).toLocaleString()}` : ''}`;
+        toast(res.failed?.length ? `Updated ${res.updated}; no quote for ${res.failed.join(', ')} (set the Yahoo symbol in Edit)` : `Updated ${res.updated} prices · ${src}`, res.failed?.length ? 'error' : 'success');
+      }
     } catch { if (!silent) toast('Could not fetch prices (offline?)', 'error'); }
     setBusy(false);
   };
