@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Archive, ArchiveRestore, Cloud, CreditCard as CardIcon, Landmark, Percent, Plus, Shield, Tags, Trash2, Users } from 'lucide-react';
 import { useAccounts, useCards, useCategories, useDelete, usePeople, useRooms, useSave, useSettings } from '../api';
 import { ACCOUNT_META, ACCOUNT_TYPES, REGISTERED, type AccountBalance, type Category, type CreditCard, type Person, type Room, type Settings as S } from '../lib/types';
+import HistoryFix from '../components/HistoryFix';
 import { SyncPanel } from '../components/SyncUI';
 import { Badge, Card, MoneyInput, NumInput, PageHeader, Tabs, btnCls, btnGhost, inputCls, CrossTable } from '../components/ui';
 
-type Tab = 'categories' | 'cards' | 'people' | 'ratios' | 'accounts' | 'room' | 'sync';
+type Tab = 'categories' | 'cards' | 'people' | 'ratios' | 'accounts' | 'room' | 'sync' | 'fix';
 const KIND_INFO: Record<Category['kind'], { title: string; hint: string }> = {
   fixed: { title: 'Fixed costs', hint: 'Same every month – prefilled in new months. Never part of living cost.' },
   utility: { title: 'Utilities', hint: 'Change every month. Group them under a parent (e.g. Power & gas under Utilities).' },
@@ -19,6 +20,15 @@ const Field = ({ label, children, className = '' }: { label: string; children: R
 
 export default function Settings() {
   const [tab, setTab] = useState<Tab>(() => (new URLSearchParams(location.search).get('tab') as Tab | null) ?? 'categories');
+  // hidden: tapping the title 5 times (or ?tab=fix) reveals the balance-correction tool
+  const taps = useRef({ n: 0, t: 0 });
+  const [unlocked, setUnlocked] = useState(tab === 'fix');
+  const tapTitle = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).tagName !== 'H1') return;
+    const now = Date.now(), k = taps.current;
+    k.n = now - k.t < 1500 ? k.n + 1 : 1; k.t = now;
+    if (k.n >= 5) { setUnlocked(true); setTab('fix'); k.n = 0; }
+  };
   const people = usePeople().data ?? [];
   const cats = useCategories().data ?? [];
   const accounts = useAccounts().data ?? [];
@@ -84,10 +94,10 @@ export default function Settings() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <PageHeader title="Settings" subtitle="Set things up once – the monthly screens do the rest."
+      <div onClick={tapTitle}><PageHeader title="Settings" subtitle="Set things up once – the monthly screens do the rest."
         actions={<Tabs value={tab} onChange={setTab} tabs={[
           { id: 'categories', label: 'Categories', icon: Tags }, { id: 'cards', label: 'Credit cards', icon: CardIcon }, { id: 'people', label: 'People', icon: Users },
-          { id: 'ratios', label: 'Savings ratios', icon: Percent }, { id: 'accounts', label: 'Accounts', icon: Landmark }, { id: 'room', label: 'Contribution room', icon: Shield }, { id: 'sync', label: 'Sync & data', icon: Cloud }]} />} />
+          { id: 'ratios', label: 'Savings ratios', icon: Percent }, { id: 'accounts', label: 'Accounts', icon: Landmark }, { id: 'room', label: 'Contribution room', icon: Shield }, { id: 'sync', label: 'Sync & data', icon: Cloud }, ...(unlocked ? [{ id: 'fix' as const, label: 'Corrections', icon: Shield }] : [])]} />} /></div>
 
       {tab === 'categories' && (<>
         <div className="flex items-center justify-between">
@@ -204,6 +214,8 @@ export default function Settings() {
           </div>
         </Card>
       )}
+
+      {tab === 'fix' && <HistoryFix />}
 
       {tab === 'room' && (
         <Card title={`Contribution room for ${year}`} subtitle="What you can put in on Jan 1 and what is already contributed. Re-enter each year – check your official limits in CRA My Account."
