@@ -19,14 +19,14 @@ const Field = ({ label, children, className = '' }: { label: string; children: R
 );
 
 export default function Settings() {
-  const [tab, setTab] = useState<Tab>(() => (new URLSearchParams(location.search).get('tab') as Tab | null) ?? 'categories');
-  // hidden: tapping the title 5 times (or ?tab=fix) reveals the balance-correction tool
+  const [tab, setTab] = useState<Tab>(() => (new URLSearchParams(location.search || location.hash.split('?')[1] || '').get('tab') as Tab | null) ?? 'categories');
+  // hidden: tapping the title 5 times (or #/settings?tab=fix) reveals the balance-correction tool
   const taps = useRef({ n: 0, t: 0 });
   const [unlocked, setUnlocked] = useState(tab === 'fix');
   const tapTitle = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).tagName !== 'H1') return;
+    if (!(e.target as HTMLElement).closest('h1, p')) return;
     const now = Date.now(), k = taps.current;
-    k.n = now - k.t < 1500 ? k.n + 1 : 1; k.t = now;
+    k.n = now - k.t < 2500 ? k.n + 1 : 1; k.t = now;
     if (k.n >= 5) { setUnlocked(true); setTab('fix'); k.n = 0; }
   };
   const people = usePeople().data ?? [];
