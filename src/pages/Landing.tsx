@@ -30,7 +30,7 @@ function BarsViz() {
 function AccountsViz() {
   return (
     <div className="lp-viz lp-accts" aria-hidden>
-      {[['TFSA', 46, '#34d399'], ['RRSP', 34, '#60a5fa'], ['FHSA', 20, '#fbbf24']].map(([n, w, c], i) => (
+      {[['TFSA', 46, '#1f5c44'], ['RRSP', 34, '#2b7a8c'], ['FHSA', 20, '#e3a21a']].map(([n, w, c], i) => (
         <div key={n as string}><span>{n}</span><b><i style={{ width: `${w}%`, background: c as string, animationDelay: `${i * 0.25}s` }} /></b></div>
       ))}
     </div>
@@ -58,7 +58,7 @@ export default function Landing() {
     <div className="lp">
       <header className="lp-nav" style={{ paddingTop: 'calc(env(safe-area-inset-top,0px) + 1rem)' }}>
         <div className="lp-wrap flex items-center justify-between">
-          <div className="flex items-center gap-3"><img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-10 w-10 rounded-xl ring-1 ring-white/10" /><span className="text-[15px] font-semibold tracking-tight">Financial Planner</span></div>
+          <div className="flex items-center gap-3 text-[#10281f]"><img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-10 w-10 rounded-lg " /><span className="text-[15px] font-semibold tracking-tight">Financial Planner</span></div>
           <button onClick={go} disabled={busy || !configured} className="lp-btn-ghost">Sign in</button>
         </div>
       </header>
@@ -80,8 +80,8 @@ export default function Landing() {
                 {import.meta.env.DEV && <button onClick={() => signInLocal().catch(e => setError(String(e?.message ?? e)))} className="lp-btn-ghost lp-btn-lg">Continue on this computer</button>}
               </div>
               <p className="lp-fine">Your account must be on the allowed list.</p>
-              {error && <p className="mt-4 text-sm text-red-300">{error}</p>}
-              {!configured && <div className="mt-6 max-w-xl text-slate-900"><p className="mb-3 text-sm text-amber-200">Sign-in isn’t configured on this site yet. The owner sets <code>VITE_GOOGLE_CLIENT_ID</code> at build time.</p><GoogleSetupGuide /></div>}
+              {error && <p className="mt-4 text-sm text-rose-700">{error}</p>}
+              {!configured && <div className="mt-6 max-w-xl text-slate-900"><p className="mb-3 text-sm text-amber-800">Sign-in isn’t configured on this site yet. The owner sets <code>VITE_GOOGLE_CLIENT_ID</code> at build time.</p><GoogleSetupGuide /></div>}
             </div>
 
             {/* the product, live: a mock of the dashboard */}

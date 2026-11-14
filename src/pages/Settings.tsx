@@ -68,7 +68,8 @@ export default function Settings() {
   useEffect(() => setRms(rooms), [JSON.stringify(rooms)]);
   const [nc, setNc] = useState({ name: '', kind: 'variable' as Category['kind'], default_amount: 0, parent_id: null as number | null });
   const parentsFor = (kind: Category['kind'], selfId?: number) => cats.filter(p => p.kind === kind && !p.parent_id && p.id !== selfId);
-  const year = new Date().getFullYear() + 1;
+  const [roomYear, setRoomYear] = useState(new Date().getFullYear());
+  const year = roomYear;
   const ratioSum = s?.ratios.reduce((a, r) => a + r.pct, 0) ?? 0;
 
   const catRow = (c: Category) => (
@@ -219,7 +220,11 @@ export default function Settings() {
 
       {tab === 'room' && (
         <Card title={`Contribution room for ${year}`} subtitle="What you can put in on Jan 1 and what is already contributed. Re-enter each year – check your official limits in CRA My Account."
-          right={<button className={btnCls} onClick={() => saveRooms.mutate(rms)}>Save</button>}>
+          right={<div className="flex items-center gap-2">
+            <select className={`${inputCls} !w-auto`} value={year} onChange={e => setRoomYear(Number(e.target.value))} aria-label="Year">
+              {Array.from(new Set([...Array.from({ length: 11 }, (_, i) => new Date().getFullYear() + i), ...rms.map(r => r.year)])).sort((a, b) => a - b).map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <button className={btnCls} onClick={() => saveRooms.mutate(rms)}>Save</button></div>}>
           <CrossTable><table className="w-full max-w-2xl text-sm">
             <thead className="text-left"><tr><th className={thCls}>Person</th><th className={thCls}>Account</th><th className={thCls}>Room</th><th className={thCls}>Already contributed</th></tr></thead>
             <tbody>

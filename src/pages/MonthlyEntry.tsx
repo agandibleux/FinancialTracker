@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Copy, PiggyBank, Plus, Save, ShoppingBag, Trash2, Wallet, Zap, Home, type LucideIcon } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, Check, Copy, PiggyBank, Plus, Save, ShoppingBag, Trash2, Wallet, Zap, Home, Target, type LucideIcon } from 'lucide-react';
 import { useAccounts, useCards, useCategories, useMonth, useMonths, usePeople, useSave } from '../api';
 import { MONTHS, money, sum, totals } from '../lib/calc';
 import { Badge, CountUp, MoneyInput, MonthNav, PageHeader, btnCls, btnGhost, inputCls } from '../components/ui';
@@ -12,7 +12,7 @@ const emptyForm: Form = { income: [], amounts: {}, hasActual: false, toCash: 0, 
 /** The five stages of a month, in the order you fill them. */
 const STEPS: { id: string; label: string; title: string; hint: string; icon: LucideIcon; grad: string; soft: string }[] = [
   { id: 'earn', label: 'Earnings', title: 'What came in', hint: 'Salary, bonus, anything you were paid this month.', icon: Wallet, grad: 'linear-gradient(135deg,#0f9f78,#34d399)', soft: '#ecfdf5' },
-  { id: 'fixed', label: 'Fixed costs', title: 'Fixed costs', hint: 'Same every month and prefilled from your template. Just check them.', icon: Home, grad: 'linear-gradient(135deg,#2f5688,#6089bd)', soft: '#eff4fa' },
+  { id: 'fixed', label: 'Fixed costs', title: 'Fixed costs', hint: 'Same every month and prefilled from your template. Just check them.', icon: Home, grad: 'linear-gradient(135deg,#1f5c44,#6089bd)', soft: '#eef5f0' },
   { id: 'util', label: 'Utilities', title: 'Utilities', hint: 'These change each month. Tap last month’s amount to reuse it.', icon: Zap, grad: 'linear-gradient(135deg,#e8890c,#fbbf24)', soft: '#fffbeb' },
   { id: 'spend', label: 'Spending', title: 'Spending', hint: 'Enter each credit card’s statement total and one-off spending (trips, furniture); everyday spending is the card total minus the one-offs, and counts as living cost.', icon: ShoppingBag, grad: 'linear-gradient(135deg,#db2777,#f472b6)', soft: '#fdf2f8' },
   { id: 'save', label: 'Savings', title: 'Actual savings', hint: 'Optional. When the month is over, record what you really put aside.', icon: PiggyBank, grad: 'linear-gradient(135deg,#0f8a86,#4cd1c8)', soft: '#effafa' },
@@ -20,7 +20,9 @@ const STEPS: { id: string; label: string; title: string; hint: string; icon: Luc
 
 export default function MonthlyEntry() {
   const now = new Date();
-  const [ym, setYm] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
+  const [params] = useSearchParams();
+  const qy = Number(params.get('y')), qm = Number(params.get('m'));
+  const [ym, setYm] = useState(() => qy > 2000 && qm >= 1 && qm <= 12 ? { year: qy, month: qm } : { year: now.getFullYear(), month: now.getMonth() + 1 });
   const { year, month } = ym;
   const people = usePeople().data ?? [];
   const cards = useCards().data ?? [];
@@ -207,6 +209,7 @@ export default function MonthlyEntry() {
       <PageHeader title="Monthly entry" subtitle="Work through the five steps. Type an amount and press Enter to jump to the next field."
         actions={<>
           <MonthNav year={year} month={month} onChange={(y, m) => { if (edited()) onSave(); setYm({ year: y, month: m }); setStep(0); }} />
+          <Link to={`/budget?y=${year}&m=${month}`} className={btnGhost} title="See how this month compares with the 50/30/20 rule"><Target size={15} />50/30/20</Link>
           <button className={btnGhost} onClick={copyLast} disabled={!prevDetail} title="Copy utilities, spending and income from last month"><Copy size={15} />Copy last month</button>
         </>} />
 

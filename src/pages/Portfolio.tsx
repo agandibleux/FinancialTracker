@@ -68,7 +68,7 @@ function YearlyView({ stats, allAccts, setAllAccts, deposits, setDeposit }: {
               <BarChart data={stats.map(y => ({ name: y.partial ? `${y.year}*` : `${y.year}`, Growth: Math.round(y.growth), Profit: y.profit === null ? null : Math.round(y.profit) }))}>
                 <CartesianGrid stroke={GRID} vertical={false} /><XAxis dataKey="name" stroke="#94a3b8" fontSize={11} /><YAxis stroke="#94a3b8" fontSize={11} tickFormatter={v => `$${v / 1000}k`} />
                 <Tooltip content={<ChartTooltip />} /><Legend />
-                <Bar dataKey="Growth" fill="#3f6ba3" radius={[4, 4, 0, 0]} /><Bar dataKey="Profit" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Growth" fill="#1f5c44" radius={[4, 4, 0, 0]} /><Bar dataKey="Profit" fill="#10b981" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </Card>
@@ -246,7 +246,7 @@ export default function Portfolio() {
                   <BarChart data={sorted.map(r => ({ name: r.ticker, Current: +r.weight.toFixed(1), Ideal: r.target_pct }))}>
                     <CartesianGrid stroke={GRID} vertical={false} /><XAxis dataKey="name" stroke="#94a3b8" fontSize={11} /><YAxis stroke="#94a3b8" fontSize={11} unit="%" />
                     <Tooltip /><Legend />
-                    <Bar dataKey="Current" fill="#3f6ba3" radius={[4, 4, 0, 0]} /><Bar dataKey="Ideal" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Current" fill="#1f5c44" radius={[4, 4, 0, 0]} /><Bar dataKey="Ideal" fill="#10b981" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </Card>

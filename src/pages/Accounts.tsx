@@ -23,13 +23,15 @@ export default function Accounts() {
   const label = (a: (typeof accounts)[number]) => `${a.type} · ${owner(a.person_id)}${a.name && a.name !== a.type ? ` · ${a.name}` : ''}`;
 
   // Daily history: for every date, each account's latest snapshot on or before it (gaps carry forward).
+  // Before an account's first snapshot we use that first balance, so adding an account later doesn't look like a jump.
   const { series, dates } = useMemo(() => {
     const dates = [...new Set(history.map(h => h.date))].sort();
     const per = new Map(accounts.map(a => [a.id, history.filter(h => h.account_id === a.id).sort((x, y) => x.date.localeCompare(y.date))]));
     const series = dates.map(d => {
       const row: Record<string, number | string> = { name: d, total: 0 };
       for (const a of accounts) {
-        const last = [...(per.get(a.id) ?? [])].reverse().find(h => h.date <= d);
+        const snaps = per.get(a.id) ?? [];
+        const last = [...snaps].reverse().find(h => h.date <= d) ?? snaps[0];
         row[label(a)] = last?.balance ?? 0; row.total = (row.total as number) + (last?.balance ?? 0);
       }
       return row;
@@ -219,9 +221,9 @@ function DailyHistory({ series, accounts, label }: { series: Row[]; accounts: { 
               <div className="mt-4 h-24">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={view} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
-                    <defs><linearGradient id="dh" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#5ccf9f" stopOpacity={0.55} /><stop offset="100%" stopColor="#5ccf9f" stopOpacity={0} /></linearGradient></defs>
+                    <defs><linearGradient id="dh" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4f9372" stopOpacity={0.55} /><stop offset="100%" stopColor="#4f9372" stopOpacity={0} /></linearGradient></defs>
                     <YAxis hide domain={['dataMin', 'dataMax']} /><XAxis hide dataKey="date" />
-                    <Area type="monotone" dataKey="total" stroke="#5ccf9f" strokeWidth={2.5} fill="url(#dh)" dot={false} isAnimationActive={false} />
+                    <Area type="monotone" dataKey="total" stroke="#4f9372" strokeWidth={2.5} fill="url(#dh)" dot={false} isAnimationActive={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -244,7 +246,7 @@ function DailyHistory({ series, accounts, label }: { series: Row[]; accounts: { 
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={moves} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
                     <XAxis hide dataKey="date" /><YAxis hide />
-                    <Tooltip content={<ChartTooltip fmt={(v: number) => signed(v)} />} cursor={{ fill: '#3f6ba311' }} />
+                    <Tooltip content={<ChartTooltip fmt={(v: number) => signed(v)} />} cursor={{ fill: '#1f5c4411' }} />
                     <Bar dataKey="delta" name="Change" radius={3} isAnimationActive={false}>
                       {moves.map(d => <Cell key={d.date} fill={d.delta! >= 0 ? '#10b981' : '#f43f5e'} />)}
                     </Bar>

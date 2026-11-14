@@ -155,9 +155,9 @@ export default function Trends() {
           <ResponsiveContainer width="100%" height={290}>
             <ComposedChart data={series} margin={{ left: -8, top: 8 }}>
               <CartesianGrid stroke={GRID} vertical={false} /><XAxis dataKey="name" {...axis} /><YAxis {...axis} tickFormatter={k} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: '#3f6ba311' }} /><Legend iconType="circle" iconSize={8} /><ReferenceLine y={0} stroke="#cbd5e1" />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: '#1f5c4411' }} /><Legend iconType="circle" iconSize={8} /><ReferenceLine y={0} stroke="#cbd5e1" />
               <Bar dataKey="Saved" radius={[6, 6, 0, 0]} maxBarSize={36}>{series.map((s, i) => <Cell key={i} fill={s.Saved < 0 ? '#fb7185' : '#6089bd'} />)}</Bar>
-              <Line dataKey="Saved (3-month trend)" stroke="#274670" strokeWidth={3} dot={false} />
+              <Line dataKey="Saved (3-month trend)" stroke="#174a37" strokeWidth={3} dot={false} />
             </ComposedChart>
           </ResponsiveContainer>
         </Card>
@@ -177,7 +177,7 @@ export default function Trends() {
           <ResponsiveContainer width="100%" height={290}>
             <BarChart data={series} margin={{ left: -8, top: 8 }}>
               <CartesianGrid stroke={GRID} vertical={false} /><XAxis dataKey="name" {...axis} /><YAxis {...axis} tickFormatter={(v: number) => `${v}%`} />
-              <Tooltip content={<ChartTooltip fmt={pctFmt} />} cursor={{ fill: '#3f6ba311' }} /><ReferenceLine y={0} stroke="#94a3b8" />
+              <Tooltip content={<ChartTooltip fmt={pctFmt} />} cursor={{ fill: '#1f5c4411' }} /><ReferenceLine y={0} stroke="#94a3b8" />
               <Bar name="Change in money out" dataKey="change" radius={[6, 6, 0, 0]} maxBarSize={36}>{series.map((s, i) => <Cell key={i} fill={s.change > 0 ? '#f43f5e' : '#10b981'} />)}</Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -212,9 +212,9 @@ export default function Trends() {
           <ResponsiveContainer width="100%" height={290}>
             <ComposedChart data={catSeries} margin={{ left: -8, top: 8 }}>
               <CartesianGrid stroke={GRID} vertical={false} /><XAxis dataKey="name" {...axis} /><YAxis {...axis} tickFormatter={(v: number) => `$${v}`} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: '#3f6ba311' }} /><Legend iconType="circle" iconSize={8} />
-              {chosen && <Bar dataKey={chosen.name} fill="#94b0d4" radius={[6, 6, 0, 0]} maxBarSize={36} />}
-              <Line dataKey="3-month trend" stroke="#274670" strokeWidth={3} dot={false} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: '#1f5c4411' }} /><Legend iconType="circle" iconSize={8} />
+              {chosen && <Bar dataKey={chosen.name} fill="#86b79c" radius={[6, 6, 0, 0]} maxBarSize={36} />}
+              <Line dataKey="3-month trend" stroke="#174a37" strokeWidth={3} dot={false} />
             </ComposedChart>
           </ResponsiveContainer>
         </Card>

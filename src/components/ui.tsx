@@ -50,7 +50,7 @@ export function HeroRing({ pct, size = 132, stroke = 12, className = '', childre
   return (
     <div className={`relative grid shrink-0 place-items-center ${className}`} style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <defs><linearGradient id="ringg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#5eead4" /><stop offset="1" stopColor="#a3e635" /></linearGradient></defs>
+        <defs><linearGradient id="ringg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#e3a21a" /><stop offset="1" stopColor="#f0c14b" /></linearGradient></defs>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,.16)" strokeWidth={stroke} />
         <circle className="ring" cx={size / 2} cy={size / 2} r={r} fill="none" stroke="url(#ringg)" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - p / 100)} />
       </svg>
@@ -64,7 +64,7 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   return (
     <div className="page-head flex flex-wrap items-end justify-between gap-3 sm:gap-4">
       <div className="min-w-0">
-        <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.025em] text-slate-900 sm:text-[32px] ">{title}</h1>
+        <h1 className="page-title text-[34px] leading-none sm:text-[46px]">{title}</h1>
         {subtitle && <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-slate-500 sm:text-[15px]">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -76,7 +76,7 @@ export function Card({ title, subtitle, right, children, className = '', pad = t
   title?: string; subtitle?: string; right?: ReactNode; children: ReactNode; className?: string; pad?: boolean; id?: string;
 }) {
   return (
-    <section id={id} className={`cq glass-lift rounded-3xl border border-slate-200/70 bg-white/95 shadow-[0_1px_2px_rgba(15,23,42,0.03),0_8px_24px_-12px_rgba(15,23,42,0.08)] ${pad ? 'p-4 sm:p-6' : ''} ${className}`}>
+    <section id={id} className={`cq glass-lift rounded-2xl border border-slate-300/60 bg-[var(--card)] shadow-[0_1px_0_rgba(27,25,19,0.04)] ${pad ? 'p-4 sm:p-6' : ''} ${className}`}>
       {(title || right) && (
         <header className={`flex flex-wrap items-start justify-between gap-3 ${pad ? 'mb-4 sm:mb-5' : 'p-4 pb-3 sm:p-6 sm:pb-3'}`}>
           <div>
@@ -102,12 +102,12 @@ const BADGE = {
 export type Tone = keyof typeof TONES;
 
 const TILE: Record<Tone, { bg: string; glow: string; line: string }> = {
-  green: { bg: 'linear-gradient(135deg,#0f9f78,#12c58f 60%,#46dba6)', glow: 'rgba(255,255,255,.35)', line: '#d1fae5' },
-  rose: { bg: 'linear-gradient(135deg,#e0446b,#f06a7f 60%,#ff9a8b)', glow: 'rgba(255,255,255,.35)', line: '#ffe4e6' },
-  amber: { bg: 'linear-gradient(135deg,#e8890c,#f5a524 60%,#ffcf6b)', glow: 'rgba(255,255,255,.4)', line: '#fff7d6' },
-  blue: { bg: 'linear-gradient(135deg,#1f7ae0,#3b9bff 60%,#6dc3ff)', glow: 'rgba(255,255,255,.35)', line: '#e0f2fe' },
-  indigo: { bg: 'linear-gradient(135deg,#2f5688,#4a7bc0 60%,#7aa6e6)', glow: 'rgba(255,255,255,.3)', line: '#dbeafe' },
-  violet: { bg: 'linear-gradient(135deg,#0f8a86,#14a39e 60%,#4cd1c8)', glow: 'rgba(255,255,255,.35)', line: '#ccfbf1' },
+  green: { bg: '#1f5c44', glow: 'transparent', line: '#cfe6d8' },
+  rose: { bg: '#a8432f', glow: 'transparent', line: '#f6d9cf' },
+  amber: { bg: '#a86d08', glow: 'transparent', line: '#fbe7b5' },
+  blue: { bg: '#2b5f7a', glow: 'transparent', line: '#d3e6ef' },
+  indigo: { bg: '#10281f', glow: 'transparent', line: '#cfe6d8' },
+  violet: { bg: '#5d4630', glow: 'transparent', line: '#eadcc8' },
 };
 
 export function Kpi({ label, value, num, hint, tone = 'indigo', icon: Icon, delta, goodWhenUp = true, spark }: {
@@ -118,13 +118,13 @@ export function Kpi({ label, value, num, hint, tone = 'indigo', icon: Icon, delt
   const good = delta == null ? true : goodWhenUp ? delta >= 0 : delta <= 0;
   const t = TILE[tone];
   return (
-    <div className="tile cq rounded-3xl p-4 text-white sm:p-5" style={{ background: t.bg, '--glow': t.glow, '--glow-strong': t.line + '99', boxShadow: '0 10px 28px -14px rgba(15,23,42,.35)' } as React.CSSProperties}>
+    <div className="tile cq rounded-2xl p-3.5 text-white sm:p-4" style={{ background: t.bg, '--glow': t.glow, '--glow-strong': t.line + '99', boxShadow: 'none' } as React.CSSProperties}>
       <div className="flex items-center justify-between gap-2">
         <p className="min-w-0 text-xs font-semibold uppercase leading-snug tracking-[0.1em] text-white/85">{label}</p>
         {Icon && <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/20 backdrop-blur-sm"><Icon size={18} /></span>}
       </div>
-      <p className="tabular num-xl mt-2.5 font-semibold tracking-[-0.03em]">{num != null ? <CountUp value={num} /> : value}</p>
-      {spark && <Spark data={spark} color={t.line} className="mt-2" />}
+      <p className="tabular num-xl mt-1.5 font-semibold tracking-[-0.03em]">{num != null ? <CountUp value={num} /> : value}</p>
+      {spark && <Spark data={spark} color={t.line} height={30} className="mt-1.5 hidden sm:block" />}
       <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
         {delta != null && Number.isFinite(delta) && (
           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${good ? 'bg-white/25 text-white' : 'bg-black/25 text-white'}`}>
@@ -139,7 +139,7 @@ export function Kpi({ label, value, num, hint, tone = 'indigo', icon: Icon, delt
 
 export function EmptyState({ title, text, action }: { title: string; text: string; action?: ReactNode }) {
   return (
-    <div className="rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 sm:p-12 text-center">
+    <div className="rounded-2xl border border-dashed border-slate-300 bg-[var(--card)]/70 p-8 sm:p-12 text-center">
       <p className="text-lg font-semibold text-slate-900">{title}</p>
       <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{text}</p>
       {action && <div className="mt-5 flex justify-center">{action}</div>}
@@ -148,9 +148,9 @@ export function EmptyState({ title, text, action }: { title: string; text: strin
 }
 
 /* ---------- controls ---------- */
-export const inputCls = 'min-h-10 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/15';
-export const btnCls = 'inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-indigo-500 to-indigo-700 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-700/25 ring-1 ring-inset ring-white/10 transition hover:brightness-110 active:scale-[.98] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none';
-export const btnGhost = 'inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-40';
+export const inputCls = 'min-h-10 w-full rounded-lg border border-slate-300 bg-[var(--card)] px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/15';
+export const btnCls = 'relative inline-flex items-center justify-center gap-2 rounded-lg bg-[#10281f] px-4 py-2.5 text-sm font-semibold text-[#f6f1e4] shadow-[0_2px_0_#e3a21a] transition hover:bg-indigo-700 active:translate-y-px active:shadow-none disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none';
+export const btnGhost = 'inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-[var(--card)] px-3.5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-40';
 
 export function NumInput({ value, onChange, className = '' }: { value: number; onChange: (n: number) => void; className?: string }) {
   return <input type="number" step="any" className={`${inputCls} tabular ${className}`} value={Number.isFinite(value) ? value : ''}
@@ -292,7 +292,7 @@ function CalcPopover({ anchor, base, onApply, onClose }: { anchor: HTMLElement; 
 
 export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { id: T; label: string; icon?: LucideIcon }[]; value: T; onChange: (t: T) => void }) {
   return (
-    <div className="fade-x -mx-1 max-w-[calc(100%+0.5rem)] min-w-0 overflow-x-auto px-1"><div className="inline-flex gap-1 rounded-2xl bg-slate-200/60 p-1">
+    <div className="fade-x -mx-1 max-w-[calc(100%+0.5rem)] min-w-0 overflow-x-auto px-1"><div className="inline-flex gap-1 rounded-2xl bg-slate-200/60 p-1 backdrop-blur">
       {tabs.map(t => (
         <button key={t.id} onClick={() => onChange(t.id)}
           className={`inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2 text-sm font-medium transition ${value === t.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
@@ -396,8 +396,8 @@ export function ChartTooltip({ active, payload, label, fmt = money }: any) {
     </div>
   );
 }
-export const COLORS = ['#3f6ba3', '#10b981', '#f59e0b', '#ec4899', '#0ea5e9', '#7c5a3a', '#14b8a6', '#f43f5e', '#64748b', '#84cc16', '#f97316', '#0891b2'];
-export const GRID = '#e2e8f0';
+export const COLORS = ['#1f5c44', '#e3a21a', '#b4503a', '#2b7a8c', '#7c5a3a', '#8aa05a', '#d17a3c', '#4d6b8a', '#a89b6e', '#5b8f7b', '#8c3d3d', '#6b6f5a'];
+export const GRID = '#e3dccd';
 
 /* ---------- toasts ---------- */
 export function ToastHost() {
@@ -415,7 +415,7 @@ export function ToastHost() {
   return (
     <div className="pointer-events-none fixed inset-x-4 bottom-28 z-[60] items-center md:inset-x-auto md:bottom-6 md:right-6 md:items-end flex flex-col gap-2">
       {items.map(t => (
-        <div key={t.id} className="pointer-events-auto flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-2xl">
+        <div key={t.id} className="toast-in pointer-events-auto flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-2xl">
           {t.kind === 'success' ? <CheckCircle2 size={18} className="text-emerald-400" /> : <AlertCircle size={18} className="text-rose-400" />}{t.message}
         </div>
       ))}

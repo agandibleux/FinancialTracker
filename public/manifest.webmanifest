@@ -3,7 +3,7 @@
   "short_name": "Planner",
   "start_url": "./", "scope": "./",
   "display": "standalone",
-  "background_color": "#f4f6fb",
-  "theme_color": "#12233d",
+  "background_color": "#eee9dd",
+  "theme_color": "#10281f",
   "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
 }

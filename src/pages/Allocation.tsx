@@ -8,7 +8,7 @@ import { emergencyStatus } from '../lib/emergency';
 import { EmergencyFund } from '../components/EmergencyFund';
 import { allocate, planRoom, type RoomRowOut } from '../lib/allocation';
 import { ACCOUNT_META, REGISTERED, type AccountType, type Room } from '../lib/types';
-import { Badge, COLORS, Card, ChartTooltip, CountUp, EmptyState, HeroRing, MoneyInput, PageHeader, Tabs, btnCls, btnGhost } from '../components/ui';
+import { Badge, COLORS, Card, ChartTooltip, CountUp, EmptyState, HeroRing, MoneyInput, PageHeader, btnCls, btnGhost } from '../components/ui';
 
 /** Fill order when savings can't cover everything: closest-to-home goal first, then tax-free, then tax-deferred. */
 const PRIORITY: AccountType[] = ['FHSA', 'TFSA', 'RRSP'];
@@ -24,8 +24,10 @@ export default function Allocation() {
 
   const now = new Date();
   const thisYear = now.getFullYear();
-  const [which, setWhich] = useState<'this' | 'next'>('this');
-  const year = which === 'this' ? thisYear : thisYear + 1;
+  const [year, setYear] = useState(thisYear);
+  const isThis = year === thisYear;
+  const YEARS_AHEAD = 10;
+  const yearOptions = Array.from(new Set([thisYear, ...Array.from({ length: YEARS_AHEAD + 1 }, (_, i) => thisYear + i), ...rooms.map(r => r.year).filter(y => y >= thisYear)])).sort((a, b) => a - b);
 
   /* ---- savings picture: only savings accounts (CASH) above the emergency fund, plus predicted savings ---- */
   const em = emergencyStatus(months, accounts, settings?.emergency_months ?? 3);
@@ -43,9 +45,10 @@ export default function Allocation() {
     }
     return total;
   };
-  const thisPredicted = predictedSavings(thisYear), nextPredicted = predictedSavings(thisYear + 1);
   const monthsLeft = Math.max(1, 12 - now.getMonth());
-  const surplus = (which === 'this' ? thisPredicted / monthsLeft : nextPredicted / 12);
+  const monthsIn = (y: number) => y === thisYear ? monthsLeft : 12;
+  const surplusFor = (y: number) => predictedSavings(y) / monthsIn(y);
+  const surplus = surplusFor(year);
 
   /* ---- room draft for the selected year (edited inline, saved explicitly) ---- */
   const fromDb = (y: number) => {
@@ -72,18 +75,22 @@ export default function Allocation() {
     setDirty(true);
   };
 
-  /* ---- plans (next year only gets what this year's plan leaves over) ---- */
+  /* ---- plans (each later year only gets the savings the earlier years' plans leave over) ---- */
   const rowsFor = (y: number, src: Map<string, { room: number; contributed: number }>) =>
     people.flatMap(p => REGISTERED.map(t => ({ key: `${p.name}|${t}`, account: t, room: src.get(k(p.id, t))?.room ?? 0, contributed: src.get(k(p.id, t))?.contributed ?? 0, y })));
   const plan = useMemo(() => {
-    const thisPlan = planRoom({ rows: rowsFor(thisYear, which === 'this' ? draft : fromDb(thisYear)), monthsLeft, monthlySurplus: surplus, excessCash: excess, priority: PRIORITY });
-    if (which === 'this') return thisPlan;
-    return planRoom({ rows: rowsFor(year, draft), monthsLeft: 12, monthlySurplus: surplus, excessCash: Math.max(0, excess - thisPlan.fundedBySavings), priority: PRIORITY });
-  }, [draft, which, rooms, people, surplus, excess]); // eslint-disable-line react-hooks/exhaustive-deps
+    let remaining = excess;
+    let result = planRoom({ rows: [], monthsLeft, monthlySurplus: 0, excessCash: 0, priority: PRIORITY });
+    for (let y = thisYear; y <= year; y++) {
+      result = planRoom({ rows: rowsFor(y, y === year ? draft : fromDb(y)), monthsLeft: monthsIn(y), monthlySurplus: surplusFor(y), excessCash: remaining, priority: PRIORITY });
+      remaining = Math.max(0, remaining - result.fundedBySavings);
+    }
+    return result;
+  }, [draft, year, rooms, people, months, excess]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalRoom = sum(plan.rows.map(r => r.room));
   const noRoom = totalRoom <= 0;
-  const monthsLabel = which === 'this' ? `${monthsLeft} month${monthsLeft > 1 ? 's' : ''} left in ${year}` : `all 12 months of ${year}`;
+  const monthsLabel = isThis ? `${monthsLeft} month${monthsLeft > 1 ? 's' : ''} left in ${year}` : `all 12 months of ${year}`;
   const headline = noRoom ? `Add your ${year} room to get a plan`
     : plan.needed <= 0.5 ? 'Every account is maxed'
     : plan.gap <= 0.5 ? 'You can max everything'
@@ -104,7 +111,9 @@ export default function Allocation() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <PageHeader title="Allocation" subtitle="Add your contribution room, and see exactly how to max it out: what to move from savings and what to set up monthly."
-        actions={<Tabs value={which} onChange={setWhich} tabs={[{ id: 'this', label: `This year · ${thisYear}` }, { id: 'next', label: `Next year · ${thisYear + 1}` }]} />} />
+        actions={<select className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900" value={year} onChange={e => setYear(Number(e.target.value))} aria-label="Plan year">
+          {yearOptions.map(y => <option key={y} value={y}>{y === thisYear ? `This year · ${y}` : y === thisYear + 1 ? `Next year · ${y}` : y}</option>)}
+        </select>} />
 
       {/* hero */}
       <section className="hero-ink rounded-3xl p-5 sm:p-8">
@@ -146,7 +155,7 @@ export default function Allocation() {
             ['Savings accounts', money(cash, 0), 'balance today'],
             ['Kept for emergencies', money(Math.min(cash, target), 0), `${em.targetMonths} months of living costs`],
             ['Available to invest', money(excess, 0), excess > 0 ? 'above your emergency fund' : 'emergency fund not full yet'],
-            [`Predicted savings ${which === 'this' ? `rest of ${year}` : year}`, money(which === 'this' ? thisPredicted : nextPredicted, 0), `${money(surplus, 0)}/month`],
+            [`Predicted savings ${isThis ? `rest of ${year}` : year}`, money(predictedSavings(year), 0), `${money(surplus, 0)}/month`],
           ].map(([l, v, h]) => (
             <div key={l}><dt className="text-xs text-slate-400">{l}</dt><dd className="tabular mt-1 text-2xl font-semibold tracking-tight text-slate-900">{v}</dd><dd className="text-xs text-slate-500">{h}</dd></div>
           ))}
@@ -204,7 +213,7 @@ export default function Allocation() {
                 ))}
               </ol>
             )}
-            {which === 'next' && !noRoom && <p className="mt-4 flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-500"><Sparkles size={14} className="mt-0.5 shrink-0" />Next year's plan only counts savings that this year's plan doesn't already use.</p>}
+            {!isThis && !noRoom && <p className="mt-4 flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-500"><Sparkles size={14} className="mt-0.5 shrink-0" />The {year} plan only counts savings that the earlier years' plans don't already use.</p>}
           </Card>
           <p className="px-1 text-xs text-slate-400">Confirm official limits and carry-forward in CRA My Account. This tool only uses the numbers you enter.</p>
         </div>

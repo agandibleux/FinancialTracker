@@ -5,9 +5,9 @@ import type { EmergencyStatus } from '../lib/emergency';
 import { Card, CountUp } from './ui';
 
 const STATE = {
-  under: { label: 'Under target', bar: '#f59e0b', chip: 'bg-amber-50 text-amber-700', verb: 'short' },
-  'on-target': { label: 'On target', bar: '#10b981', chip: 'bg-emerald-50 text-emerald-700', verb: '' },
-  over: { label: 'Over target', bar: '#3f6ba3', chip: 'bg-indigo-50 text-indigo-700', verb: 'above' },
+  under: { label: 'Under target', bar: '#e3a21a', chip: 'bg-amber-50 text-amber-700', verb: 'short' },
+  'on-target': { label: 'On target', bar: '#1f5c44', chip: 'bg-emerald-50 text-emerald-700', verb: '' },
+  over: { label: 'Over target', bar: '#2b7a8c', chip: 'bg-indigo-50 text-indigo-700', verb: 'above' },
   unset: { label: 'No target yet', bar: '#94a3b8', chip: 'bg-slate-100 text-slate-600', verb: '' },
 } as const;
 
@@ -22,35 +22,25 @@ export function EmergencyFund({ s, className = '' }: { s: EmergencyStatus; class
     : s.state === 'under' ? `Build ${money(-s.diff, 0)} more before investing extra.`
     : `${money(s.diff, 0)} is free to move into TFSA, RRSP or FHSA.`;
   return (
-    <Card className={className} title="Emergency fund" subtitle={`Savings accounts vs ${s.targetMonths} months of living costs (fixed + utilities + everyday)`}
-      right={<span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${st.chip}`}><ShieldCheck size={13} />{st.label}</span>}>
-      <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
-        <div>
+    <Card className={className} title="Emergency fund" subtitle={`vs ${s.targetMonths} months of living costs`}
+      right={<span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${st.chip}`}><ShieldCheck size={13} />{st.label}</span>}>
+      <div className="flex items-end justify-between gap-3">
+        <div className="min-w-0">
           <p className="display tabular num-lg text-slate-900"><CountUp value={s.cash} /></p>
-          <p className="text-sm text-slate-500">in savings · target <b className="text-slate-700">{money(s.target, 0)}</b></p>
+          <p className="text-xs text-slate-500">in savings · target <b className="text-slate-700">{money(s.target, 0)}</b></p>
         </div>
-        <div className="text-right">
-          <p className="tabular text-2xl font-semibold tracking-tight" style={{ color: st.bar }}>
-            {s.state === 'unset' ? '—' : s.state === 'on-target' ? '✓' : `${s.diff < 0 ? '−' : '+'}${money(Math.abs(s.diff), 0)}`}
-          </p>
-          <p className="text-sm text-slate-500">{s.state === 'under' || s.state === 'over' ? st.verb : ''}{s.state === 'on-target' ? 'on target' : ''}</p>
-        </div>
+        <p className="tabular shrink-0 text-xl font-semibold tracking-tight" style={{ color: st.bar }}>
+          {s.state === 'unset' ? '—' : s.state === 'on-target' ? '✓' : `${s.diff < 0 ? '−' : '+'}${money(Math.abs(s.diff), 0)}`}
+        </p>
       </div>
-
-      <div className="relative mt-6 mb-7">
-        <div className="h-3.5 overflow-hidden rounded-full bg-slate-100">
+      <div className="relative mt-4 mb-1">
+        <div className="h-3 overflow-hidden rounded-full bg-slate-200/70">
           <div className="grow h-full rounded-full transition-[width] duration-700" style={{ width: `${fill}%`, background: st.bar }} />
         </div>
-        <div className="absolute -top-1.5 h-6 w-0.5 rounded bg-slate-800" style={{ left: `${mark}%` }} />
-        <span className="absolute top-6 -translate-x-1/2 text-[11px] font-medium text-slate-500" style={{ left: `${mark}%` }}>Target</span>
+        <div className="absolute -top-1 h-5 w-[3px] -translate-x-1/2 rounded-full bg-slate-900 ring-2 ring-[var(--card)]" style={{ left: `${mark}%` }} title="Target" />
       </div>
-
-      <div className="grid grid-cols-3 gap-3 text-sm">
-        <div><p className="text-xs text-slate-400">Months covered</p><p className="tabular text-lg font-semibold text-slate-900">{s.monthsCovered.toFixed(1)}<span className="text-sm font-normal text-slate-400"> / {s.targetMonths}</span></p></div>
-        <div><p className="text-xs text-slate-400">Monthly cost</p><p className="tabular text-lg font-semibold text-slate-900">{money(s.monthlyCost, 0)}</p></div>
-        <div><p className="text-xs text-slate-400">Funded</p><p className="tabular text-lg font-semibold text-slate-900">{Math.round(s.pct)}%</p></div>
-      </div>
-      <p className="mt-4 text-sm text-slate-600">{msg} <Link to="/settings" className="text-indigo-600 underline">change months</Link></p>
+      <p className="tabular mt-3 text-xs text-slate-500"><b className="text-slate-800">{s.monthsCovered.toFixed(1)}</b> of {s.targetMonths} months · {money(s.monthlyCost, 0)}/mo · {Math.round(s.pct)}% funded</p>
+      <p className="mt-1.5 text-xs text-slate-600">{msg} <Link to="/settings" className="text-indigo-600 underline">change months</Link></p>
     </Card>
   );
 }
