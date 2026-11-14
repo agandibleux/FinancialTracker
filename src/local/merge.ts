@@ -13,6 +13,7 @@ interface Spec { table: string; key?: string[]; unit?: string; noId?: boolean }
 const SPECS: Spec[] = [
   { table: 'person', key: ['id'] },
   { table: 'category', key: ['id'] },
+  { table: 'fixed_plan', key: ['category_id', 'year', 'month'] },
   { table: 'month', key: ['id'] },
   { table: 'income_entry', unit: 'month_id', noId: true },
   { table: 'expense_entry', key: ['month_id', 'category_id'], noId: true },

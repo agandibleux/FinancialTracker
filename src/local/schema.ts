@@ -8,6 +8,11 @@ CREATE TABLE IF NOT EXISTS category (
   counts_as_living INTEGER NOT NULL DEFAULT 1,
   default_amount REAL NOT NULL DEFAULT 0
 );
+/* fixed costs per year; month 0 = every month of the year, 1-12 = an override for that month */
+CREATE TABLE IF NOT EXISTS fixed_plan (
+  category_id INTEGER NOT NULL REFERENCES category(id) ON DELETE CASCADE, year INTEGER NOT NULL, month INTEGER NOT NULL DEFAULT 0,
+  amount REAL NOT NULL, PRIMARY KEY (category_id, year, month)
+);
 CREATE TABLE IF NOT EXISTS month (id INTEGER PRIMARY KEY, year INTEGER NOT NULL, month INTEGER NOT NULL, UNIQUE(year, month));
 CREATE TABLE IF NOT EXISTS income_entry (
   id INTEGER PRIMARY KEY, month_id INTEGER NOT NULL REFERENCES month(id) ON DELETE CASCADE,

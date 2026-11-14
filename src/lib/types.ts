@@ -59,3 +59,5 @@ export interface Holding {
 }
 
 export interface HoldingSnapshot { account_id: number; date: string; ticker: string; shares: number; price: number; avg_price: number }
+
+export type { PlanRow } from './fixedPlan';

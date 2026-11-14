@@ -1,17 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
-import { Archive, ArchiveRestore, Cloud, CreditCard as CardIcon, Landmark, Percent, Plus, Shield, Tags, Trash2, Users } from 'lucide-react';
+import { Archive, ArchiveRestore, Cloud, CreditCard as CardIcon, Home, Landmark, Percent, Plus, Shield, Tags, Trash2, Users, type LucideIcon } from 'lucide-react';
 import { useAccounts, useCards, useCategories, useDelete, usePeople, useRooms, useSave, useSettings } from '../api';
 import { ACCOUNT_META, ACCOUNT_TYPES, REGISTERED, type AccountBalance, type Category, type CreditCard, type Person, type Room, type Settings as S } from '../lib/types';
 import HistoryFix from '../components/HistoryFix';
+import { FixedCosts } from '../components/FixedCosts';
 import { SyncPanel } from '../components/SyncUI';
 import { Badge, Card, MoneyInput, NumInput, PageHeader, Tabs, btnCls, btnGhost, inputCls, CrossTable } from '../components/ui';
 
-type Tab = 'categories' | 'cards' | 'people' | 'ratios' | 'accounts' | 'room' | 'sync' | 'fix';
+type Tab = 'fixed' | 'categories' | 'cards' | 'people' | 'ratios' | 'accounts' | 'room' | 'sync' | 'fix';
 const KIND_INFO: Record<Category['kind'], { title: string; hint: string }> = {
-  fixed: { title: 'Fixed costs', hint: 'Same every month – prefilled in new months. Never part of living cost.' },
+  fixed: { title: 'Fixed costs', hint: 'Same every month. Amounts per year are set under Fixed costs; this default is only used where a year has none.' },
   utility: { title: 'Utilities', hint: 'Change every month. Group them under a parent (e.g. Power & gas under Utilities).' },
   variable: { title: 'Spending', hint: 'Everyday spending and one-offs. Untick “living” for things like trips or big purchases.' },
 };
+
+const SECTIONS: { group: string; items: [Tab, string, LucideIcon, string][] }[] = [
+  { group: 'Budget', items: [['fixed', 'Fixed costs', Home, 'Per year, with monthly changes'], ['categories', 'Categories', Tags, 'Utilities and spending']] },
+  { group: 'Household', items: [['people', 'People', Users, 'Who earns and saves'], ['accounts', 'Accounts', Landmark, 'Balances and types'], ['cards', 'Credit cards', CardIcon, 'Limits']] },
+  { group: 'Planning', items: [['ratios', 'Savings ratios', Percent, 'Where savings go'], ['room', 'Contribution room', Shield, 'TFSA, RRSP, FHSA']] },
+  { group: 'Data', items: [['sync', 'Sync & data', Cloud, 'Drive, backups, import']] },
+];
 
 const thCls = 'pb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500';
 const Field = ({ label, children, className = '' }: { label: string; children: React.ReactNode; className?: string }) => (
@@ -19,7 +27,7 @@ const Field = ({ label, children, className = '' }: { label: string; children: R
 );
 
 export default function Settings() {
-  const [tab, setTab] = useState<Tab>(() => (new URLSearchParams(location.search || location.hash.split('?')[1] || '').get('tab') as Tab | null) ?? 'categories');
+  const [tab, setTab] = useState<Tab>(() => (new URLSearchParams(location.search || location.hash.split('?')[1] || '').get('tab') as Tab | null) ?? 'fixed');
   // hidden: tapping the title 5 times (or #/settings?tab=fix) reveals the balance-correction tool
   const taps = useRef({ n: 0, t: 0 });
   const [unlocked, setUnlocked] = useState(tab === 'fix');
@@ -93,12 +101,44 @@ export default function Settings() {
     </tr>
   );
 
+  const sections = SECTIONS.map(g => g.group === 'Data' && unlocked ? { ...g, items: [...g.items, ['fix', 'Corrections', Shield, 'Fix a balance'] as [Tab, string, LucideIcon, string]] } : g);
+  const here = sections.flatMap(g => g.items).find(i => i[0] === tab);
+
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div onClick={tapTitle}><PageHeader title="Settings" subtitle="Set things up once – the monthly screens do the rest."
-        actions={<Tabs value={tab} onChange={setTab} tabs={[
-          { id: 'categories', label: 'Categories', icon: Tags }, { id: 'cards', label: 'Credit cards', icon: CardIcon }, { id: 'people', label: 'People', icon: Users },
-          { id: 'ratios', label: 'Savings ratios', icon: Percent }, { id: 'accounts', label: 'Accounts', icon: Landmark }, { id: 'room', label: 'Contribution room', icon: Shield }, { id: 'sync', label: 'Sync & data', icon: Cloud }, ...(unlocked ? [{ id: 'fix' as const, label: 'Corrections', icon: Shield }] : [])]} />} /></div>
+      <div onClick={tapTitle}><PageHeader title="Settings" subtitle="Set things up once – the monthly screens do the rest." /></div>
+
+      <div className="grid gap-4 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8">
+        {/* phone: one scrolling strip; desktop: grouped list */}
+        <nav aria-label="Settings sections" className="min-w-0 lg:sticky lg:top-6 lg:self-start">
+          <div className="fade-x -mx-4 overflow-x-auto px-4 lg:hidden"><div className="flex w-max gap-1.5 pb-1">
+            {sections.flatMap(g => g.items).map(([id, label, Icon]) => (
+              <button key={id} onClick={() => setTab(id)} aria-current={tab === id}
+                className={`inline-flex min-h-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-2 text-sm font-semibold ${tab === id ? 'border-[#10281f] bg-[#10281f] text-[#f6f1e4]' : 'border-slate-300 bg-[var(--card)] text-slate-600'}`}><Icon size={14} />{label}</button>
+            ))}
+          </div></div>
+          <div className="hidden space-y-5 lg:block">
+            {sections.map(g => (
+              <div key={g.group}>
+                <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">{g.group}</p>
+                <ul className="space-y-0.5">
+                  {g.items.map(([id, label, Icon, hint]) => (
+                    <li key={id}><button onClick={() => setTab(id)} aria-current={tab === id}
+                      className={`group flex min-h-0 w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition ${tab === id ? 'bg-[#10281f] text-[#f6f1e4]' : 'text-slate-600 hover:bg-slate-200/50'}`}>
+                      <Icon size={17} className="shrink-0" />
+                      <span className="min-w-0"><span className="block text-sm font-semibold leading-tight">{label}</span><span className={`block truncate text-[11px] leading-tight ${tab === id ? 'text-[#a9bdb1]' : 'text-slate-400'}`}>{hint}</span></span>
+                    </button></li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </nav>
+
+        <div className="min-w-0 space-y-4 sm:space-y-6">
+          {here && <h2 className="display hidden text-[30px] leading-none text-slate-900 lg:block">{here[1]}</h2>}
+
+      {tab === 'fixed' && <FixedCosts cats={cats} />}
 
       {tab === 'categories' && (<>
         <div className="flex items-center justify-between">
@@ -109,7 +149,7 @@ export default function Settings() {
           <Card key={kind} title={KIND_INFO[kind].title} subtitle={KIND_INFO[kind].hint}
             right={<Badge tone={kind === 'fixed' ? 'violet' : kind === 'utility' ? 'amber' : 'blue'}>{cats.filter(c => c.kind === kind && !c.archived).length} active</Badge>}>
             <CrossTable><table className="w-full text-sm">
-              <thead className="text-left"><tr><th className={thCls}>Name</th><th className={thCls}>Group under</th><th className={thCls}>Monthly template</th><th className={`${thCls} text-center`}>Living</th><th /></tr></thead>
+              <thead className="text-left"><tr><th className={thCls}>Name</th><th className={thCls}>Group under</th><th className={thCls}>{kind === 'fixed' ? 'Default / month' : 'Monthly template'}</th><th className={`${thCls} text-center`}>Living</th><th /></tr></thead>
               <tbody>
                 {cats.filter(c => c.kind === kind && (showArchived || !c.archived)).map(catRow)}
                 {nc.kind === kind && (
@@ -244,6 +284,8 @@ export default function Settings() {
           </table></CrossTable>
         </Card>
       )}
+        </div>
+      </div>
     </div>
   );
 }

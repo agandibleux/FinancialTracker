@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from './lib/toast';
 import { apiFetch } from './local/routes';
+import type { PlanRow } from './lib/fixedPlan';
 import type { DepositRow, Holding, HoldingSnapshot, AnyExpense, Snapshot, YearExpense, AccountBalance, Category, CreditCard, MonthDetail, MonthSummary, Person, Room, Settings, WealthYear } from './lib/types';
 
 async function j<T>(url: string, init?: RequestInit): Promise<T> {
@@ -14,6 +15,7 @@ const q = <T,>(key: string, url: string) => () => useQuery({ queryKey: [key], qu
 export const usePeople = q<Person[]>('people', '/api/people');
 export const useCategories = q<Category[]>('categories', '/api/categories');
 export const useMonths = q<MonthSummary[]>('months', '/api/months');
+export const useFixedPlan = q<PlanRow[]>('fixed-plan', '/api/fixed-plan');
 export const useSettings = q<Settings>('settings', '/api/settings');
 export const useWealth = q<WealthYear[]>('wealth', '/api/wealth');
 export const useAccounts = q<AccountBalance[]>('accounts', '/api/accounts');

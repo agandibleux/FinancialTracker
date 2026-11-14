@@ -40,6 +40,27 @@ describe('local api', () => {
   });
 });
 
+describe('fixed costs per year', () => {
+  it('stores a yearly amount and monthly overrides, and applies them to entered months', async () => {
+    await openDb(null, wasm);
+    await dispatch('PUT', '/api/people', [{ name: 'Me' }]);
+    const pid = ((await dispatch('GET', '/api/people')) as any[])[0].id;
+    const rent = (await dispatch('POST', '/api/categories', { name: 'Rent', kind: 'fixed', default_amount: 1000 })) as { id: number };
+    await dispatch('PUT', '/api/months/2026/1', { income: [{ person_id: pid, source: 'Salary', amount: 5000 }], expenses: [{ category_id: rent.id, amount: 1000 }] });
+    await dispatch('PUT', '/api/months/2026/2', { income: [{ person_id: pid, source: 'Salary', amount: 5000 }], expenses: [{ category_id: rent.id, amount: 1000 }] });
+    await dispatch('PUT', '/api/fixed-plan', [{ category_id: rent.id, year: 2026, month: 0, amount: 1200 }, { category_id: rent.id, year: 2026, month: 2, amount: 1350 }]);
+    expect(await dispatch('GET', '/api/fixed-plan')).toHaveLength(2);
+    expect(await dispatch('POST', '/api/fixed-plan/apply', { year: 2026 })).toEqual({ months: 2 });
+    const rentIn = async (m: number) => ((await dispatch('GET', `/api/months/2026/${m}`)) as any).expenses.find((e: any) => e.category_id === rent.id).amount;
+    expect(await rentIn(1)).toBe(1200);
+    expect(await rentIn(2)).toBe(1350);
+    await dispatch('PUT', '/api/fixed-plan', [{ category_id: rent.id, year: 2026, month: 2, amount: null }]); // clear the override
+    expect(await dispatch('GET', '/api/fixed-plan')).toHaveLength(1);
+    await dispatch('DELETE', `/api/categories/${rent.id}`); // plan rows go with the category
+    expect(await dispatch('GET', '/api/fixed-plan')).toEqual([]);
+  });
+});
+
 describe('three-way merge', () => {
   it('keeps edits made on two devices and propagates deletes', async () => {
     const { mergeDatabases } = await import('./merge');

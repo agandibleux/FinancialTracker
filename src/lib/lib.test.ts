@@ -140,3 +140,21 @@ describe('evalExpr', () => {
     expect(isRelative('45')).toBe(false);
   });
 });
+
+import { fixedBase, fixedFor, type PlanRow } from './fixedPlan';
+describe('fixed costs per year', () => {
+  const plan: PlanRow[] = [
+    { category_id: 1, year: 2025, month: 0, amount: 1800 },
+    { category_id: 1, year: 2026, month: 0, amount: 1900 },
+    { category_id: 1, year: 2026, month: 7, amount: 2400 }, // one-off higher month
+  ];
+  it('uses the month override, else the year, else the latest earlier year, else the default', () => {
+    expect(fixedFor(plan, 1, 2026, 7, 1500)).toBe(2400);
+    expect(fixedFor(plan, 1, 2026, 8, 1500)).toBe(1900);
+    expect(fixedFor(plan, 1, 2025, 7, 1500)).toBe(1800);
+    expect(fixedFor(plan, 1, 2027, 1, 1500)).toBe(1900); // carried forward
+    expect(fixedBase(plan, 1, 2027, 1500)).toEqual({ amount: 1900, source: 'carried', from: 2026 });
+    expect(fixedFor(plan, 1, 2024, 1, 1500)).toBe(1500); // before any plan: the category default
+    expect(fixedFor(plan, 2, 2026, 1, 80)).toBe(80); // another category is unaffected
+  });
+});

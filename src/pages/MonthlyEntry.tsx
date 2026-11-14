@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Copy, PiggyBank, Plus, Save, ShoppingBag, Trash2, Wallet, Zap, Home, Target, type LucideIcon } from 'lucide-react';
-import { useAccounts, useCards, useCategories, useMonth, useMonths, usePeople, useSave } from '../api';
+import { fixedFor } from '../lib/fixedPlan';
+import { useAccounts, useCards, useCategories, useFixedPlan, useMonth, useMonths, usePeople, useSave } from '../api';
 import { MONTHS, money, sum, totals } from '../lib/calc';
 import { Badge, CountUp, MoneyInput, MonthNav, PageHeader, btnCls, btnGhost, inputCls } from '../components/ui';
 import { isInvested, type Category, type IncomeEntry, type MonthDetail } from '../lib/types';
@@ -25,6 +26,7 @@ export default function MonthlyEntry() {
   const [ym, setYm] = useState(() => qy > 2000 && qm >= 1 && qm <= 12 ? { year: qy, month: qm } : { year: now.getFullYear(), month: now.getMonth() + 1 });
   const { year, month } = ym;
   const people = usePeople().data ?? [];
+  const plan = useFixedPlan().data ?? [];
   const cards = useCards().data ?? [];
   const [exclOpen, setExclOpen] = useState<number[]>([]);
   const toggleExcl = (id: number) => setExclOpen(o => o.includes(id) ? o.filter(x => x !== id) : [...o, id]);
@@ -71,7 +73,7 @@ export default function MonthlyEntry() {
     if (loadedKey.current === key && edited()) return; // don't clobber typing with a refetch
     const isNew = detail.income.length === 0 && detail.expenses.length === 0;
     const amounts: Record<number, number> = {};
-    for (const c of cats) amounts[c.id] = isNew && c.kind === 'fixed' && !c.archived ? c.default_amount : 0;
+    for (const c of cats) amounts[c.id] = isNew && c.kind === 'fixed' && !c.archived ? fixedFor(plan, c.id, year, month, c.default_amount) : 0;
     for (const e of detail.expenses) amounts[e.category_id] = e.amount;
     const f: Form = {
       income: detail.income.length ? detail.income : [{ person_id: people[0]?.id ?? 1, source: 'Salary', amount: 0 }],
@@ -84,7 +86,7 @@ export default function MonthlyEntry() {
     initial.current = JSON.stringify(f);
     setForm(f);
     setBaseline(isNew ? '' : initial.current);
-  }, [detail, isFetching, cats.length, people.length, investAccounts.length]);
+  }, [detail, isFetching, cats.length, people.length, investAccounts.length, plan.length]);
 
   const dirty = JSON.stringify(form) !== baseline;
   const expenses = cats.filter(c => !isCardCat(c)).map(c => ({ category_id: c.id, amount: form.amounts[c.id] ?? 0 }));

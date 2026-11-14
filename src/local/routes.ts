@@ -3,6 +3,7 @@
  * `apiFetch` mimics `fetch('/api/...')` so the pages and hooks stay unchanged.
  */
 import { all, get, getSettings, monthId, newId, notifyWrite, run, tx, type Row } from './db';
+import { fixedFor } from '../lib/fixedPlan';
 import { NoProxyError, chart, quote, resetSnapshot, yahooSymbol } from './quotes';
 
 type Ctx = { p: string[]; q: URLSearchParams; body: any };
@@ -124,6 +125,35 @@ const routes: [string, RegExp, Handler][] = [
     return ok();
   }],
   ['DELETE', /^categories\/(\d+)$/, ({ p }) => { run('DELETE FROM category WHERE id=?', p[0]); return ok(); }],
+
+  // ---- fixed costs per year (month 0 = whole year, 1-12 = one month) ----
+  ['GET', /^fixed-plan$/, () => all('SELECT category_id, year, month, amount FROM fixed_plan ORDER BY year, month, category_id')],
+  ['PUT', /^fixed-plan$/, ({ body }) => {
+    tx(() => {
+      for (const r of body as { category_id: number; year: number; month: number; amount: number | null }[]) {
+        if (r.amount == null) run('DELETE FROM fixed_plan WHERE category_id=? AND year=? AND month=?', r.category_id, r.year, r.month);
+        else run(`INSERT INTO fixed_plan(category_id, year, month, amount) VALUES (?,?,?,?)
+                  ON CONFLICT(category_id, year, month) DO UPDATE SET amount=excluded.amount`, r.category_id, r.year, r.month, r.amount);
+      }
+    });
+    return ok();
+  }],
+  /** Rewrites the fixed costs of every month already entered in a year so they match the plan. Everything else in those months is untouched. */
+  ['POST', /^fixed-plan\/apply$/, ({ body }) => {
+    const year = Number(body.year);
+    const plan = all('SELECT category_id, year, month, amount FROM fixed_plan') as any[];
+    const fixed = all("SELECT id, default_amount FROM category WHERE kind='fixed' AND archived=0");
+    const months = all('SELECT id, month FROM month WHERE year=?', year);
+    tx(() => {
+      for (const m of months) for (const c of fixed) {
+        const amount = fixedFor(plan, c.id, year, m.month, c.default_amount);
+        if (amount) run(`INSERT INTO expense_entry(month_id, category_id, amount) VALUES (?,?,?)
+                         ON CONFLICT(month_id, category_id) DO UPDATE SET amount=excluded.amount`, m.id, c.id, amount);
+        else run('DELETE FROM expense_entry WHERE month_id=? AND category_id=?', m.id, c.id);
+      }
+    });
+    return { months: months.length };
+  }],
 
   // ---- credit cards ----
   ['GET', /^cards$/, () => all('SELECT * FROM credit_card ORDER BY name')],
