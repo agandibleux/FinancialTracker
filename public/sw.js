@@ -1,8 +1,8 @@
 /* App-shell cache so the planner opens offline (all data is local anyway). Bump VERSION to force a refresh of cached assets. */
-const VERSION = 'v4';
+const VERSION = 'v5';
 const CACHE = `planner-${VERSION}`;
 const ROOT = self.registration.scope; // works under a sub-path like /repo/
-const SHELL = ['', 'index.html', 'manifest.webmanifest', 'icon.svg'].map(p => ROOT + p);
+const SHELL = ['', 'index.html', 'manifest.webmanifest', 'icon.svg', 'apple-touch-icon.png'].map(p => ROOT + p);
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
