@@ -215,7 +215,6 @@ export default function Wealth() {
     const r = rows.find(x => x.year === p.year);
     return r ? { ...r, saved: true } : { ...defaultRow(p.year), saved: false };
   });
-  const resetProjected = () => setRows(rs => rs.filter(r => r.actual_end != null || r.year === rs[0]?.year).map((r, i) => i === 0 && r.actual_end == null ? { ...r, return_pct: plan.returnPct, monthly_contribution: invMonthly } : r));
 
   const addWd = () => {
     const y = Math.min(thisYear + horizon - 1, thisYear + 10);
@@ -303,8 +302,6 @@ export default function Wealth() {
             <div className="space-y-4">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#d9cfb4]">Both</p>
               <Slider label="Yearly raise in what you save" value={plan.growthPct} min={0} max={10} step={0.5} onChange={n => setPlanPatch({ growthPct: n })} />
-              <button onClick={applyAvg} className="w-full rounded-lg bg-white/10 px-3 py-2 text-sm font-medium ring-1 ring-white/15 transition hover:bg-white/15">Use my real savings average ({money(avgMonthInv)} invested · {money(avgMonthCash)} cash)</button>
-              <button onClick={resetProjected} className="w-full rounded-lg px-3 py-2 text-xs text-[#d9cfb4] ring-1 ring-white/10 transition hover:bg-white/10">Reset projected years to these settings</button>
             </div>
           </div>
 
