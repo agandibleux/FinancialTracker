@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Area, Bar, BarChart, ReferenceLine, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useDelete, useSave, useWealth, useAccounts, useMonths } from '../api';
 import { money, sum } from '../lib/calc';
@@ -55,6 +56,37 @@ function Slider({ label, value, min, max, step, onChange, suffix = '%' }: { labe
 }
 function DarkMoney({ value, onChange }: { value: number; onChange: (n: number) => void }) {
   return <div className="rounded-lg bg-white/10 ring-1 ring-white/15 focus-within:ring-[#e3a21a] [&_input]:!border-0 [&_input]:!bg-transparent [&_input]:!text-[#f6f1e4] [&_input]:!shadow-none [&_input]:!ring-0"><MoneyInput value={value} onChange={onChange} /></div>;
+}
+
+/** Click-through list of the real monthly amounts behind an average. Each month links to its entry; "use" copies the value into the plan. */
+function ActualData({ rows, avg, current, onUse, onAvg }: {
+  rows: { year: number; month: number; value: number }[]; avg: number; current: number; onUse: (n: number) => void; onAvg: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const list = [...rows].reverse();
+  return (
+    <div className="mt-2">
+      <button type="button" onClick={() => setOpen(o => !o)} className="flex items-center gap-1.5 text-xs font-medium text-[#e3a21a] hover:underline">
+        <span className={`inline-block transition ${open ? 'rotate-90' : ''}`}>▸</span>{open ? 'Hide' : 'See'} actual data · {rows.length} months · avg {money(avg)}
+      </button>
+      {open && (
+        <div className="mt-2 overflow-hidden rounded-xl bg-white/5 ring-1 ring-white/10">
+          <button type="button" onClick={onAvg} className="flex w-full items-center justify-between px-3 py-2 text-left text-xs hover:bg-white/10">
+            <span className="text-[#d9cfb4]">Average of all months</span><b className="tabular text-[#f6f1e4]">{money(avg)}</b>
+          </button>
+          <div className="max-h-52 divide-y divide-white/5 overflow-y-auto border-t border-white/10">
+            {list.map(r => (
+              <div key={`${r.year}-${r.month}`} className={`flex items-center justify-between gap-2 px-3 py-1.5 text-xs ${Math.round(r.value) === current ? 'bg-[#e3a21a]/15' : ''}`}>
+                <Link to={`/month?y=${r.year}&m=${r.month}`} className="text-[#d9cfb4] underline-offset-2 hover:text-white hover:underline">{r.year}-{String(r.month).padStart(2, '0')} ↗</Link>
+                <span className="flex items-center gap-2"><b className="tabular text-[#f6f1e4]">{money(r.value)}</b>
+                  <button type="button" onClick={() => onUse(Math.round(r.value))} className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-[#f6f1e4] hover:bg-[#e3a21a] hover:text-[#10281f]">use</button></span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Wealth() {
@@ -213,6 +245,7 @@ export default function Wealth() {
               <div>
                 <span className="text-xs text-[#d9cfb4]">Invested per month {plan.contrib == null ? <em className="not-italic text-[#e3a21a]">· your real average</em> : <button type="button" onClick={() => setPlanPatch({ contrib: null })} className="ml-1 rounded-full bg-[#e3a21a]/20 px-2 py-0.5 text-[11px] font-semibold text-[#e3a21a] hover:bg-[#e3a21a]/30">↺ back to real avg {money(avgMonthInv)}</button>}</span>
                 <div className="mt-1"><DarkMoney value={invMonthly} onChange={n => setPlanPatch({ contrib: n })} /></div>
+                <ActualData rows={saved12.map(m => ({ year: m.year, month: m.month, value: m.to_investments }))} avg={avgMonthInv} current={invMonthly} onUse={n => setPlanPatch({ contrib: n })} onAvg={() => setPlanPatch({ contrib: null })} />
               </div>
             </div>
 
@@ -222,6 +255,7 @@ export default function Wealth() {
               <div>
                 <span className="text-xs text-[#d9cfb4]">Saved per month {plan.savingsMonthly == null ? <em className="not-italic text-[#e3a21a]">· your real average</em> : <button type="button" onClick={() => setPlanPatch({ savingsMonthly: null })} className="ml-1 rounded-full bg-[#e3a21a]/20 px-2 py-0.5 text-[11px] font-semibold text-[#e3a21a] hover:bg-[#e3a21a]/30">↺ back to real avg {money(avgMonthCash)}</button>}</span>
                 <div className="mt-1"><DarkMoney value={savMonthly} onChange={n => setPlanPatch({ savingsMonthly: n })} /></div>
+                <ActualData rows={saved12.map(m => ({ year: m.year, month: m.month, value: m.to_cash }))} avg={avgMonthCash} current={savMonthly} onUse={n => setPlanPatch({ savingsMonthly: n })} onAvg={() => setPlanPatch({ savingsMonthly: null })} />
               </div>
               <p className="text-xs text-[#d9cfb4]">Starts from your savings balance today: <b className="text-[#f6f1e4]">{money(cashNow)}</b></p>
             </div>
