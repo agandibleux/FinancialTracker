@@ -6,10 +6,11 @@ on:
 permissions: { contents: read }
 # Commits win: a push cancels a running price refresh, but a price refresh never cancels or replaces a push.
 # (A price run checks out the latest main, so it includes any commit that was waiting.)
-concurrency: { group: pages, cancel-in-progress: "${{ github.event_name == 'push' }}" }
+# The queue is held per job, not per run, so the long sleep in `next` never blocks a deploy.
 jobs:
   build:
     runs-on: ubuntu-latest
+    concurrency: { group: pages, cancel-in-progress: "${{ github.event_name == 'push' }}" }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,6 +29,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    concurrency: { group: pages, cancel-in-progress: "${{ github.event_name == 'push' }}" }
     permissions: { pages: write, id-token: write }
     environment: { name: github-pages, url: "${{ steps.d.outputs.page_url }}" }
     steps:
