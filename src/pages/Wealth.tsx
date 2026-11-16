@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Area, Bar, BarChart, ReferenceLine, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useDelete, useSave, useWealth, useAccounts, useMonths } from '../api';
+import { useDelete, useSave, useWealth, useAccounts, useMonths, useSettings } from '../api';
+import { emergencyStatus } from '../lib/emergency';
 import { money, sum } from '../lib/calc';
 import { buildProjection, projectSavings, type Withdrawal } from '../lib/projection';
 import { isInvested, type WealthYear } from '../lib/types';
@@ -23,9 +24,9 @@ const compact = (v: number) => v >= 1e6 ? `$${(v / 1e6).toFixed(v >= 1e7 ? 0 : 1
 type Mode = 'both' | 'invest' | 'savings';
 interface Plan {
   horizon: number; returnPct: number; spread: number; contrib: number | null; growthPct: number;
-  mode: Mode; savingsRate: number; savingsMonthly: number | null; withdrawals: Withdrawal[];
+  mode: Mode; savingsRate: number; savingsMonthly: number | null; withdrawals: Withdrawal[]; moveExcess: boolean;
 }
-const DEFAULT_PLAN: Plan = { horizon: 30, returnPct: 7, spread: 2, contrib: null, growthPct: 0, mode: 'both', savingsRate: 3, savingsMonthly: null, withdrawals: [] };
+const DEFAULT_PLAN: Plan = { horizon: 30, returnPct: 7, spread: 2, contrib: null, growthPct: 0, mode: 'both', savingsRate: 3, savingsMonthly: null, withdrawals: [], moveExcess: false };
 const PLAN_KEY = 'wealth-plan-v1';
 function usePlan() {
   const [plan, setPlan] = useState<Plan>(() => {
@@ -89,10 +90,35 @@ function ActualData({ rows, avg, current, onUse, onAvg }: {
   );
 }
 
+/** Reads the whole data row, so the projected wealth always shows next to the range, whatever series the chart skips. */
+function ProjectionTooltip({ active, payload, label }: any) {
+  const d = payload?.[0]?.payload;
+  if (!active || !d) return null;
+  const rows: [string, number | null, string, boolean?][] = [
+    ['Projected wealth', d['Wealth path'], C_PATH, true],
+    ['Optimistic', d.Optimistic, C_PLAN],
+    ['Conservative', d.Conservative, C_PLAN],
+    ['Savings account', d['Savings account'], C_SAV],
+    ['Actual year-end', d.Actual, C_ACTUAL],
+  ];
+  return (
+    <div className="min-w-[11rem] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs shadow-xl">
+      <p className="mb-1 font-semibold text-slate-900">{label}</p>
+      {rows.filter(r => r[1] != null).map(([name, v, color, bold]) => (
+        <p key={name} className={`tabular flex items-center justify-between gap-4 ${bold ? 'text-sm' : 'text-slate-600'}`}>
+          <span className="flex items-center gap-2"><i className="inline-block h-2 w-2 rounded-full" style={{ background: color }} />{name}</span>
+          <b className="text-slate-900">{money(v as number)}</b>
+        </p>
+      ))}
+    </div>
+  );
+}
+
 export default function Wealth() {
   const saved = useWealth().data ?? [];
   const accounts = useAccounts().data ?? [];
   const months = useMonths().data ?? [];
+  const settings = useSettings().data;
   const save = useSave<WealthYear[]>('PUT', '/api/wealth');
   const del = useDelete(y => `/api/wealth/${y}`);
   const mobile = useIsMobile();
@@ -107,7 +133,12 @@ export default function Wealth() {
   const thisYear = now.getFullYear();
   // Today's real net worth anchors the current year: the rest of the year grows from it.
   const monthsLeft = (Date.UTC(thisYear + 1, 0, 1) - Date.UTC(thisYear, now.getMonth(), now.getDate())) / 864e5 / 365 * 12;
-  const anchor = invested > 0 ? { year: thisYear, value: invested, monthsLeft } : undefined;
+  // Simulation: savings above the emergency reserve move into investments today; the reserve stays in savings.
+  const em = emergencyStatus(months, accounts, settings?.emergency_months ?? 3);
+  const excess = em.target > 0 ? Math.max(0, Math.round(cashNow - em.target)) : 0;
+  const moved = plan.moveExcess && plan.mode !== 'savings' ? excess : 0;
+  const anchorFor = (extra: number) => invested + extra > 0 ? { year: thisYear, value: invested + extra, monthsLeft } : undefined;
+  const anchor = anchorFor(moved);
 
   // Savings actually put aside, from the monthly entries that have a savings split.
   const saved12 = months.filter(m => m.actual != null);
@@ -130,17 +161,25 @@ export default function Wealth() {
   const startYear = rows[0]?.year ?? thisYear;
   const opts = useMemo(() => ({
     defaults: { return_pct: plan.returnPct, monthly_contribution: useInv ? invMonthly : 0, growth_pct: plan.growthPct },
-    startYear, startWealth: useInv ? invested : 0, withdrawals: plan.withdrawals,
-  }), [plan.returnPct, plan.growthPct, plan.withdrawals, invMonthly, useInv, startYear, invested]);
+    startYear, startWealth: useInv ? invested + moved : 0, withdrawals: plan.withdrawals,
+  }), [plan.returnPct, plan.growthPct, plan.withdrawals, invMonthly, useInv, startYear, invested, moved]);
   const proj = useMemo(() => useInv ? buildProjection(rows, horizon, anchor, opts) : buildProjection([], horizon, undefined, { ...opts, startWealth: 0 }),
-    [rows, horizon, invested, monthsLeft, opts, useInv]);
-  const lo = useMemo(() => buildProjection(rows, horizon, anchor, { ...opts, returnOffset: -plan.spread }), [rows, horizon, invested, monthsLeft, opts, plan.spread]);
-  const hi = useMemo(() => buildProjection(rows, horizon, anchor, { ...opts, returnOffset: plan.spread }), [rows, horizon, invested, monthsLeft, opts, plan.spread]);
-  const sav = useMemo(() => projectSavings(cashNow, plan.savingsRate, savMonthly, plan.growthPct, horizon), [cashNow, plan.savingsRate, savMonthly, plan.growthPct, horizon]);
+    [rows, horizon, invested, monthsLeft, opts, useInv, moved]);
+  const lo = useMemo(() => buildProjection(rows, horizon, anchor, { ...opts, returnOffset: -plan.spread }), [rows, horizon, invested, monthsLeft, opts, plan.spread, moved]);
+  const hi = useMemo(() => buildProjection(rows, horizon, anchor, { ...opts, returnOffset: plan.spread }), [rows, horizon, invested, monthsLeft, opts, plan.spread, moved]);
+  const sav = useMemo(() => projectSavings(cashNow - moved, plan.savingsRate, savMonthly, plan.growthPct, horizon), [cashNow, moved, plan.savingsRate, savMonthly, plan.growthPct, horizon]);
   const sv = (i: number) => useSav ? sav[i] ?? 0 : 0;
   const iv = (a: typeof proj, i: number) => useInv ? a[i]?.end ?? 0 : 0;
   const totalAt = (i: number) => iv(proj, i) + sv(i);
   const cur = proj.find(p => p.year === thisYear) ?? proj[0];
+  // The same plan without moving anything, to show what the move is worth.
+  const base = useMemo(() => {
+    if (!excess) return null;
+    const o = { ...opts, startWealth: useInv ? invested : 0 };
+    const b = useInv ? buildProjection(rows, horizon, anchorFor(0), o) : [];
+    const sb = projectSavings(cashNow, plan.savingsRate, savMonthly, plan.growthPct, horizon);
+    return (b[horizon - 1]?.end ?? 0) + (useSav ? sb[horizon - 1] ?? 0 : 0);
+  }, [excess, rows, horizon, opts, invested, useInv, useSav, cashNow, plan.savingsRate, savMonthly, plan.growthPct, monthsLeft]);
 
   /** Plan changes also re-base the years that already have saved assumptions, so the sliders always move the graph.
    *  Years with a real result are left alone; a one-off override on a single year is replaced. */
@@ -191,7 +230,7 @@ export default function Wealth() {
     Actual: p.actualEnd == null ? null : Math.round(p.actualEnd + sv(i)),
     'Wealth path': Math.round(totalAt(i)),
     'Savings account': useSav ? Math.round(sv(i)) : null,
-    'Today (actual)': p.asOf == null || !useInv ? null : Math.round(p.asOf + (useSav ? cashNow : 0)),
+    'Today (actual)': p.asOf == null || !useInv ? null : Math.round(p.asOf - moved + (useSav ? cashNow : 0)),
   }));
   const at = (n: number) => proj[n - 1] ? totalAt(n - 1) : null;
   const first = proj[0], last = proj[proj.length - 1];
@@ -199,6 +238,7 @@ export default function Wealth() {
   const startTotal = (useInv ? first?.start ?? 0 : 0) + (useSav ? cashNow : 0);
   const contributed = shown.reduce((t, r, i) => t + (useInv ? r.monthly_contribution * 12 : 0) + (useSav ? savMonthly * 12 * Math.pow(1 + plan.growthPct / 100, i) : 0), 0);
   const endTotal = last ? totalAt(lastI) : 0;
+  const moveGain = base != null && last ? endTotal - base : 0;
   const growthTotal = endTotal - startTotal - contributed + wdTotals.gross;
   const nowIdx = Math.max(0, proj.findIndex(p => p.year === cur?.year));
 
@@ -269,6 +309,25 @@ export default function Wealth() {
           </div>
 
           <div className="mt-6 border-t border-white/10 pt-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="max-w-xl">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#d9cfb4]">Simulation · put idle savings to work</p>
+                <p className="mt-1 text-sm text-[#f6f1e4]">
+                  {em.target <= 0 ? 'Enter a few months of spending so I can compute your reserve.'
+                    : excess > 0 ? <>Keep your <b>{money(em.target, 0)}</b> reserve ({em.targetMonths} months of costs) and move the other <b className="text-[#e3a21a]">{money(excess, 0)}</b> of your {money(cashNow, 0)} savings into investments.</>
+                    : <>Your savings ({money(cashNow, 0)}) are at or under your {money(em.target, 0)} reserve, so there is nothing spare to invest.</>}
+                </p>
+                {moved > 0 && base != null && <p className="mt-1 text-xs text-[#d9cfb4]">By {thisYear + horizon - 1} that is <b className="text-[#e3a21a]">{moveGain >= 0 ? '+' : '−'}{money(Math.abs(moveGain), 0)}</b> versus leaving it in savings ({money(base, 0)} → {money(endTotal, 0)}).</p>}
+                {plan.moveExcess && plan.mode === 'savings' && excess > 0 && <p className="mt-1 text-xs text-[#d9cfb4]">Switch the view to include investments to see the effect.</p>}
+              </div>
+              <button disabled={excess <= 0} onClick={() => setPlanPatch({ moveExcess: !plan.moveExcess })}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${plan.moveExcess ? 'bg-[#e3a21a] text-[#10281f]' : 'bg-white/10 text-[#f6f1e4] ring-1 ring-white/20 hover:bg-white/15'}`}>
+                {plan.moveExcess ? '✓ Simulating the move' : 'Simulate the move'}
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-6 border-t border-white/10 pt-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#d9cfb4]">Lump-sum withdrawals</p>
@@ -329,7 +388,7 @@ export default function Wealth() {
             {cur && <ReferenceLine x={String(cur.year)} stroke="#c3c2b7" strokeDasharray="3 4" label={{ value: mobile ? 'Real balance' : 'Real balance, not a forecast →', position: 'insideTopLeft', fill: '#898781', fontSize: 11, dy: -12 }} />}
             <XAxis dataKey="name" stroke="none" tick={{ fill: '#898781', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#c3c2b7' }} interval={mobile ? Math.max(0, Math.ceil(chart.length / 6) - 1) : chart.length > 20 ? 1 : 0} tickMargin={8} />
             <YAxis stroke="none" tick={{ fill: '#898781', fontSize: 11 }} tickLine={false} axisLine={false} width={mobile ? 44 : 56} tickFormatter={compact} />
-            <Tooltip content={<ChartTooltip />} cursor={{ stroke: C_PATH, strokeOpacity: 0.35, strokeWidth: 1 }} wrapperStyle={{ outline: 'none' }} />
+            <Tooltip content={<ProjectionTooltip />} cursor={{ stroke: C_PATH, strokeOpacity: 0.35, strokeWidth: 1 }} wrapperStyle={{ outline: 'none' }} />
             <Bar dataKey="Actual" fill="url(#gBar)" maxBarSize={24} radius={[4, 4, 0, 0]} />
             <Line dataKey="Today (actual)" stroke="none" isAnimationActive={false} activeDot={false}
               dot={(d: any) => d.value == null ? <g key={d.index} /> : <g key="today"><circle cx={d.cx} cy={d.cy} r={9} fill="#0b0b0b" fillOpacity={0.12} /><circle cx={d.cx} cy={d.cy} r={5.5} fill="#0b0b0b" stroke="#fff" strokeWidth={2.5} /><text x={d.cx} y={d.cy - 16} textAnchor="middle" fontSize={11} fontWeight={600} fill="#0b0b0b">{mobile ? compact(d.value) : `Today · ${compact(d.value)} actual`}</text></g>} />
