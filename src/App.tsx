@@ -65,12 +65,15 @@ export default function App() {
           <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-9 w-9 rounded-lg" />
           <div className="hidden lg:block"><p className="display text-[22px] leading-none">Financial Planner</p><p className="mt-1.5 flex items-center gap-1.5 text-[11px] tracking-wide text-[#a9bdb1]"><i className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-[#e3a21a]" />Household · CAD</p></div>
         </div>
+        <NavLink to="/month" title="Monthly entry" className={({ isActive }) => `mb-6 flex items-center justify-center gap-3 rounded-xl px-3 py-3.5 text-[15px] font-bold transition active:scale-[.98] lg:py-4 ${isActive ? 'ring-2 ring-[#f6f1e4]' : 'hover:brightness-105'}`} style={{ background: '#e3a21a', color: '#10281f', boxShadow: '0 6px 0 -2px rgba(0,0,0,.35)' }}>
+          <CalendarDays size={22} className="shrink-0" /><span className="hidden lg:inline">Monthly entry</span>
+        </NavLink>
         <nav className="flex flex-1 flex-col gap-3 overflow-y-auto lg:gap-6">
           {GROUPS.map(g => (
             <div key={g.title}>
               <p className="mb-2 hidden px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#6f8a7b] lg:block">{g.title}</p>
               <div className="flex flex-col gap-0.5">
-                {g.items.map(([to, label, Icon]) => (
+                {g.items.filter(([to]) => to !== '/month').map(([to, label, Icon]) => (
                   <NavLink key={to} to={to} end={to === '/'} title={label} className={({ isActive }) => link(isActive)}>
                     {({ isActive }) => (<>
                       <Icon size={18} className="shrink-0" /><span className="hidden lg:inline">{label}</span>
