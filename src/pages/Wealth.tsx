@@ -65,7 +65,7 @@ export default function Wealth() {
   const del = useDelete(y => `/api/wealth/${y}`);
   const mobile = useIsMobile();
   const [rows, setRows] = useState<WealthYear[]>([]);
-  const [plan, setPlanPatch] = usePlan();
+  const [plan, patchPlan] = usePlan();
   const horizon = plan.horizon;
   useEffect(() => setRows(saved), [JSON.stringify(saved)]);
 
@@ -110,6 +110,17 @@ export default function Wealth() {
   const totalAt = (i: number) => iv(proj, i) + sv(i);
   const cur = proj.find(p => p.year === thisYear) ?? proj[0];
 
+  /** Plan changes also re-base the years that already have saved assumptions, so the sliders always move the graph.
+   *  Years with a real result are left alone; a one-off override on a single year is replaced. */
+  const setPlanPatch = (p: Partial<Plan>) => {
+    patchPlan(p);
+    if (!('returnPct' in p || 'contrib' in p || 'growthPct' in p)) return;
+    const next = { ...plan, ...p };
+    const inv = Math.round(next.contrib ?? avgMonthInv);
+    setRows(rs => rs.map(r => r.actual_end != null ? r : {
+      ...r, return_pct: next.returnPct, monthly_contribution: Math.round(inv * Math.pow(1 + next.growthPct / 100, r.year - startYear)),
+    }));
+  };
   const applyAvg = () => setPlanPatch({ contrib: null, savingsMonthly: null });
   const defaultRow = (year: number): WealthYear => ({
     year, start_wealth: invested, return_pct: plan.returnPct,
