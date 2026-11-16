@@ -19,6 +19,16 @@ function useIsMobile() {
   }, []);
   return m;
 }
+function useWide() {
+  const [w, setW] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 1700px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1700px)');
+    const on = () => setW(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return w;
+}
 const compact = (v: number) => v >= 1e6 ? `$${(v / 1e6).toFixed(v >= 1e7 ? 0 : 1)}M` : `$${Math.round(v / 1000)}k`;
 
 type Mode = 'both' | 'invest' | 'savings';
@@ -122,6 +132,7 @@ export default function Wealth() {
   const save = useSave<WealthYear[]>('PUT', '/api/wealth');
   const del = useDelete(y => `/api/wealth/${y}`);
   const mobile = useIsMobile();
+  const wide = useWide();
   const [rows, setRows] = useState<WealthYear[]>([]);
   const [plan, patchPlan] = usePlan();
   const horizon = plan.horizon;
@@ -273,7 +284,7 @@ export default function Wealth() {
             ))}
           </div>
 
-          <div className="mt-6 grid gap-6 lg:grid-cols-3">
+          <div className="mt-6 grid gap-6 lg:grid-cols-3 min-[1700px]:gap-10">
             <div className={`space-y-4 ${useInv ? '' : 'opacity-40'}`}>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#d9cfb4]">Investments</p>
               <div className="flex flex-wrap gap-1.5">
@@ -357,6 +368,7 @@ export default function Wealth() {
         <Kpi label={wdTotals.gross ? 'Withdrawn · after tax' : 'Avg monthly savings'} value={wdTotals.gross ? money(wdTotals.net) : money(avgSavings)} hint={wdTotals.gross ? `${money(wdTotals.gross)} gross · ${money(wdTotals.tax)} tax` : 'Last 12 months'} tone="amber" />
       </div>
 
+      <div className="grid gap-4 sm:gap-6 min-[1700px]:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)] min-[1700px]:items-start">
       <Card title="Projection" subtitle={`Orange bars = your real result for closed years. The path re-bases on each actual; dashed lines show ${(plan.returnPct - plan.spread).toFixed(1)}% and ${(plan.returnPct + plan.spread).toFixed(1)}% markets.`}>
         {last && first && (
           <div className="mb-4 flex flex-wrap items-end justify-between gap-x-8 gap-y-4 sm:mb-5">
@@ -373,7 +385,7 @@ export default function Wealth() {
             </div>
           </div>
         )}
-        <ResponsiveContainer width="100%" height={mobile ? 300 : 380}>
+        <ResponsiveContainer width="100%" height={mobile ? 300 : wide ? 480 : 380}>
           <ComposedChart data={chart} margin={{ top: mobile ? 28 : 16, right: mobile ? 44 : 72, bottom: 0, left: mobile ? -4 : 0 }}>
             <defs>
               <linearGradient id="gPath" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C_PATH} stopOpacity={0.32} /><stop offset="70%" stopColor={C_PATH} stopOpacity={0.06} /><stop offset="100%" stopColor={C_PATH} stopOpacity={0} /></linearGradient>
@@ -402,7 +414,7 @@ export default function Wealth() {
       </Card>
 
       <Card title="Your savings" subtitle="What you actually put aside each month, split between investments and your savings account. Averages feed the projection below.">
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] min-[1700px]:grid-cols-1">
           <div className="space-y-4">
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Average per year</p>
@@ -453,6 +465,8 @@ export default function Wealth() {
           <p className="text-xs text-slate-500">Only the investments part is added, since the projection tracks investments. Remember to Save.</p>
         </div>
       </Card>
+
+      </div>
 
       <Card title="Year by year & real year-end results"
         subtitle="Every year follows your plan above. Override a year if you like, and when it closes, type your real ending investments.">

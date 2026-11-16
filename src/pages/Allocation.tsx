@@ -226,6 +226,7 @@ export default function Allocation() {
         </div>
       )}
 
+      <div className="grid gap-4 sm:gap-6 min-[1700px]:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] min-[1700px]:items-start">
       <EmergencyFund s={em} />
 
       {/* this month's savings */}
@@ -255,6 +256,7 @@ export default function Allocation() {
           </ul>
         </div>
       </Card>
+      </div>
     </div>
   );
 }

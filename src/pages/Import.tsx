@@ -74,6 +74,7 @@ export default function Import() {
           className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-white" />
       </Card>
 
+      <div className="grid gap-4 sm:gap-6 min-[1700px]:grid-cols-2 min-[1700px]:items-start">
       {sheet && (
         <Card title="2. Map columns">
           <div className="grid gap-4 md:grid-cols-5">
@@ -113,6 +114,7 @@ export default function Import() {
           {commit.isError && <p className="mt-2 text-sm text-rose-600">Import failed: {String(commit.error)}</p>}
         </Card>
       )}
+      </div>
     </div>
   );
 }

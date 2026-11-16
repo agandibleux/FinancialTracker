@@ -97,8 +97,8 @@ export default function App() {
         </div>
       </header>
 
-      <main className="min-w-0 flex-1 px-4 pb-32 pt-[calc(env(safe-area-inset-top,0px)+6.25rem)] md:px-8 md:pb-20 md:pt-10 lg:px-14">
-        <div className="page mx-auto max-w-[80rem]">
+      <main className="min-w-0 flex-1 px-4 pb-32 pt-[calc(env(safe-area-inset-top,0px)+6.25rem)] md:px-8 md:pb-20 md:pt-10 lg:px-14 min-[2300px]:px-20">
+        <div className="page mx-auto max-w-[80rem] min-[1700px]:max-w-[104rem] min-[2300px]:max-w-[132rem]">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/month" element={<MonthlyEntry />} />

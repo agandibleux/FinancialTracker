@@ -152,7 +152,7 @@ export default function Charts() {
         </Card>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 min-[1900px]:grid-cols-4 min-[2600px]:grid-cols-5">
         {series.map(s => <TickerCard key={s.ticker} s={s} range={range} />)}
       </div>
       {failed.length > 0 && <p className="text-sm text-slate-500">No quote data for {failed.join(', ')}. Set the Yahoo symbol in ETF portfolio → Edit holdings.</p>}
