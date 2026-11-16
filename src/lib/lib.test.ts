@@ -26,6 +26,16 @@ describe('projection', () => {
   it('compounds to the annual rate with no contributions', () => {
     expect(projectYear(1000, 10, 0)).toBeCloseTo(1100, 6);
   });
+  it('applies plan defaults and a taxed lump-sum withdrawal', () => {
+    const rows = buildProjection([], 3, undefined, {
+      defaults: { return_pct: 0, monthly_contribution: 100, growth_pct: 0 }, startYear: 2030, startWealth: 1000,
+      withdrawals: [{ id: 'a', year: 2031, amount: 500, tax_pct: 20 }],
+    });
+    expect(rows[0].end).toBeCloseTo(2200, 6);
+    expect(rows[1].withdrawn).toBe(500);
+    expect(rows[1].tax).toBeCloseTo(100, 6);
+    expect(rows[1].end).toBeCloseTo(2200 + 1200 - 500, 6);
+  });
   it('actual overrides projection and seeds next year', () => {
     const rows = buildProjection([
       { year: 2026, start_wealth: 1000, return_pct: 10, monthly_contribution: 0, actual_end: 1200 },
