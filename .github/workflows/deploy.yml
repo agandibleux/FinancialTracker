@@ -4,7 +4,9 @@ on:
   workflow_dispatch:
   schedule: [{ cron: '7,37 12-23 * * 1-5' }, { cron: '23 3 * * 2-6' }] # fresh prices: every 30 min on market days (UTC), plus a close-out
 permissions: { contents: read }
-concurrency: { group: pages, cancel-in-progress: true }
+# Commits win: a push cancels a running price refresh, but a price refresh never cancels or replaces a push.
+# (A price run checks out the latest main, so it includes any commit that was waiting.)
+concurrency: { group: pages, cancel-in-progress: "${{ github.event_name == 'push' }}" }
 jobs:
   build:
     runs-on: ubuntu-latest
